@@ -8,19 +8,22 @@
     x Build a naive player that follows a simple pattern but is able to complete its hand
         x Play the smallest valid moveset
     x Test the naive player for a few games
-    - Allow the user to act as a player
-    - Write another comprehensive moveset of patterns
+    x Allow the user to act as a player
+    x Write a comprehensive moveset of patterns
+    - Test user player on simple moveset
+        - Rank order when passing
+    - Implement simple bombs
     - Decide on a format for recording the game (and maybe annotate rewards later)
     - Ask ChatGPT to improve the code
 
 - Decide on a model (probably PPO)
-    - Embed the cards
+    - Embed the cards and movesets
     - Find a way to store and replay experiences
     - Self-play with the naive models and human player
-    - Make sure the model is able to train and complete a game
+    - Make sure the model is able to learn and complete a game
     - Improve the model to have a good win rate
 
-- Implement resetting and rule checking for other game modes
-    - Test the edge cases
+- Implement more movesets
+    - Test edge cases
 
 - Use the pre-trained simple model to continue training on the complex rule sets

@@ -1,3 +1,6 @@
+from consts import *
+
+# Choose the smallest playable hand given a pattern
 def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
     """
     params:
@@ -94,3 +97,20 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
             raise NotImplementedError("Pattern not available")
     
     return contains_pattern, choice, leading_rank
+
+# Convert frequency array to card string
+def write_user_cards(hand):
+    card_str = ""
+    for rank, freq in enumerate(hand):
+        card_str += CARDS[rank] * freq
+    return card_str
+    
+# Convert card string to frequency array
+def read_user_cards(user_cards):
+    if not user_cards:
+        return False, None, -1
+    else:
+        choice = [0] * 15
+        for c in user_cards:
+            choice[RANKS[c]] += 1
+        return True, choice, RANKS[user_cards[0]]

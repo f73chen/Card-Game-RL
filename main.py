@@ -5,11 +5,12 @@ import utils
 from consts import *
 
 class GameEnv:
-    def __init__(self, num_players=4, num_decks=1, mode="individual", moveset=MOVESET_1):
+    def __init__(self, num_players=4, num_decks=1, win_mode="individual", moveset=MOVESET_1, has_user=False):
         self.num_players = num_players
         self.num_decks = num_decks
-        self.mode = mode
+        self.win_mode = win_mode
         self.moveset = moveset
+        self.has_user = has_user
         
         self.reset()
 
@@ -41,7 +42,12 @@ class GameEnv:
         # Decide the order that cards were dealt
         self.order = random.randint(0, self.num_players-1)
         self.hands = self.hands[self.order:] + self.hands[:self.order]
-        self.players = [NaivePlayer(hand=self.hands[p], moveset=self.moveset) for p in range(self.num_players)]
+        
+        if self.has_user:
+            self.players = [NaivePlayer(hand=self.hands[p], moveset=self.moveset) for p in range(self.num_players - 1)]
+            self.players.append(UserPlayer(hand=self.hands[-1], moveset=self.moveset))
+        else:
+            self.players = [NaivePlayer(hand=self.hands[p], moveset=self.moveset) for p in range(self.num_players)]
         
     def play_game(self):
         for player in self.players:
@@ -74,7 +80,7 @@ class GameEnv:
             
             print(f"Player {curr_player} plays:")
             if contains_pattern:
-                print(prev_choice, pattern, leading_rank)
+                print(f"Choice: {prev_choice}, pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}")
                 print(self.players[curr_player].hand, remainder)
                 print()
                 for player in self.players:
@@ -114,10 +120,34 @@ class NaivePlayer:
             contains_pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern, leading_rank=leading_rank)
                 
         # Return the card choice and subtract it from its hand
-        choice = np.array(choice)
-        self.hand -= choice
+        if contains_pattern:
+            choice = np.array(choice)
+            self.hand -= choice
         return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
+    
+class UserPlayer:
+    def __init__(self, hand, moveset, free=False):
+        self.hand = hand
+        self.moveset = moveset
+        self.free = free
+        
+    # Assume the user always makes a valid move
+    # The first card is the leading rank
+    def move(self, pattern=None, prev_choice=None, leading_rank=-1):
+        # Get the user input
+        print(f"Hand: {utils.write_user_cards(self.hand)}")
+        user_cards = input("Enter your move: ")    # 334455 format
+        if self.free:
+            pattern = input("Enter the pattern: ")  # 1x5 format
+        contains_pattern, choice, leading_rank = utils.read_user_cards(user_cards)   # Convert to numpy frequency array
+        
+        # Record the play
+        if contains_pattern:
+            choice = np.array(choice)
+            self.hand -= choice
+        return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
+        
             
-env = GameEnv(num_decks=2)
+env = GameEnv(num_decks=2, has_user=True)
 env.play_game()
 
