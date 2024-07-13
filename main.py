@@ -38,27 +38,57 @@ class GameEnv:
                             
             self.hands[-1] = card_freq
             
+        # Decide the order that cards were dealt
         self.order = random.randint(0, self.num_players-1)
         self.hands = self.hands[self.order:] + self.hands[:self.order]
         self.players = [NaivePlayer(hand=self.hands[p], moveset=self.moveset) for p in range(self.num_players)]
         
-        self.play_game()
-        
     def play_game(self):
-        curr_player = random.randint(0, self.num_players-1)
-        self.players[curr_player].free = True
+        for player in self.players:
+            print(player.hand)
+        print()
         
-        counter = 0
-        # while True:
-        while counter <= 10:
-            pattern, choice, remainder = self.players[curr_player].move(prev_pattern=pattern, prev_choice=choice)
-            curr_player = (curr_player + 1) % self.num_players
+        # Start with a random player
+        curr_player = random.randint(0, self.num_players-1)
+        print(f"Player {curr_player} starts")
+        
+        self.players[curr_player].free = True
+        pattern = None
+        prev_choice = None
+        leading_rank = None
+        skip_count = 0
+        
+        # Players play in order until the game is over (empty hand)
+        while True:
+            # If all other players skip their turn, the current player is free to move
+            if skip_count == self.num_players - 1:
+                self.players[curr_player].free = True
+                skip_count = 0
             
-            print(self.players[curr_player].hand, pattern, choice)
+            contains_pattern, pattern, prev_choice, leading_rank, remainder = self.players[curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
             
+            if not contains_pattern:
+                skip_count += 1
+            else:
+                skip_count = 0
+            
+            print(f"Player {curr_player} plays:")
+            if contains_pattern:
+                print(prev_choice, pattern, leading_rank)
+                print(self.players[curr_player].hand, remainder)
+                print()
+                for player in self.players:
+                    print(player.hand)
+            else:
+                print(f"Skip. Skip count: {skip_count}")
+            print()
+        
+            # Check if the game is over
             if remainder <= 0:
                 break
-            counter += 1
+            
+            # Move on to the next player
+            curr_player = (curr_player + 1) % self.num_players
             
         print(f"Game over. Winner is player {curr_player}")
 
@@ -68,19 +98,26 @@ class NaivePlayer:
         self.moveset = moveset
         self.free = free
         
-    def move(self, prev_pattern="", prev_choice=""):
+    def move(self, pattern=None, prev_choice=None, leading_rank=-1):
+        # If free to move, play the smallest available hand
+        # Doesn't care about previous cards or leading rank
         if self.free:
+            self.free = False
+            random.shuffle(self.moveset)
             for pattern in self.moveset:
-                if utils.valid_pattern(hand=self.hand, pattern=pattern):
-                    prev_pattern = pattern
-                    choice = utils.smallest_valid_play(hand=self.hand, pattern=pattern)
+                contains_pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern)
+                if contains_pattern:
                     break
+        
+        # Else follow the pattern of the player before it and play a higher rank
         else:
-            if utils.valid_pattern(hand=self.hand, pattern=prev_pattern):
-                choice = utils.smallest_valid_play(hand=self.hand, pattern=pattern, cards=prev_choice)
+            contains_pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern, leading_rank=leading_rank)
                 
+        # Return the card choice and subtract it from its hand
+        choice = np.array(choice)
         self.hand -= choice
-        return prev_pattern, choice, np.sum(self.hand)
+        return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
             
-env = GameEnv()
+env = GameEnv(num_decks=2)
+env.play_game()
 

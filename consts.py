@@ -16,15 +16,14 @@ CARDS = {0: "3",
 
 CARD_FREQ = [4] * 13 + [1, 1]
 
-CARDS_PER_PLAYER = {"4_1": [14, 14, 13, 13]}
+CARDS_PER_PLAYER = {"4_1": [14, 14, 13, 13],
+                    "4_2": [27, 27, 27, 27]}
 
-MOVESET_1 = ["A",
-             "AA",
-             "AAAB",
-             "AAABB",
-             "AAAA",
-             "AABBCC",
-             "AABBCCDD",
-             "AABBCCDDEE",
-             "AABBCCDDEEFF"]
+# Simplified moveset
+MOVESET_1 = ["2x3",
+             "1x5",
+             "3+2",
+             "3+1",
+             "2",
+             "1"]
 
