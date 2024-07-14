@@ -111,13 +111,13 @@ class NaivePlayer:
             self.free = False
             random.shuffle(self.moveset)
             for pattern in self.moveset:
-                contains_pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern)
+                contains_pattern, pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern)
                 if contains_pattern:
                     break
         
         # Else follow the pattern of the player before it and play a higher rank
         else:
-            contains_pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern, leading_rank=leading_rank)
+            contains_pattern, pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern, leading_rank=leading_rank)
                 
         # Return the card choice and subtract it from its hand
         if contains_pattern:
@@ -136,12 +136,13 @@ class UserPlayer:
     def move(self, pattern=None, prev_choice=None, leading_rank=-1):
         # Get the user input
         print(f"Hand: {utils.write_user_cards(self.hand)}")
+        
         if self.free:
-            print("Free to move")
+            print("FREE TO MOVE")
             pattern = input("Enter the pattern: ")  # 1x5 format
             self.free = False
         user_cards = input("Enter your move: ")    # 334455 format
-        contains_pattern, choice, user_rank = utils.read_user_cards(user_cards)   # Convert to numpy frequency array
+        contains_pattern, pattern, choice, user_rank = utils.read_user_cards(user_cards, pattern)   # Convert to numpy frequency array
         
         # Record the play
         if contains_pattern:

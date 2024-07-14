@@ -40,11 +40,22 @@ CARDS_PER_PLAYER = {"4_1": [14, 14, 13, 13],
 # Simplified moveset
 # One of each type, no bombs
 MOVESET_1 = ["1x5",
+             
              "2x3",
+             
              "3+1",
              "3+2",
+             
              "1",
-             "2"]
+             "2",
+             "3",
+             "4",
+             "5",
+             "6",
+             "7",
+             "8",
+             "4.5",
+             "8.5"]
 
 # Comprehensive moveset
 # Assume each hand can have up to 27 cards
@@ -103,6 +114,6 @@ MOVESET_2 = ["1x5",
              "6",
              "7",
              "8",
-             "W2",
-             "W4"]
+             "4.5", # 1 pair of Jokers
+             "8.5"] # 2 pairs of Jokers
 

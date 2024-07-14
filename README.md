@@ -12,6 +12,7 @@
     x Write a comprehensive moveset of patterns
     x Test user player on simple moveset (Fix rank order when user passes)
     - Implement simple bombs
+    - When bombing, consider the available moveset
     - Decide on a format for recording the game (and maybe annotate rewards later)
     - Ask ChatGPT to improve the code
 
@@ -24,5 +25,7 @@
 
 - Implement more movesets
     - Test edge cases
+
+- Add a smart player
 
 - Use the pre-trained simple model to continue training on the complex rule sets
