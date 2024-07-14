@@ -136,15 +136,18 @@ class UserPlayer:
     def move(self, pattern=None, prev_choice=None, leading_rank=-1):
         # Get the user input
         print(f"Hand: {utils.write_user_cards(self.hand)}")
-        user_cards = input("Enter your move: ")    # 334455 format
         if self.free:
+            print("Free to move")
             pattern = input("Enter the pattern: ")  # 1x5 format
-        contains_pattern, choice, leading_rank = utils.read_user_cards(user_cards)   # Convert to numpy frequency array
+            self.free = False
+        user_cards = input("Enter your move: ")    # 334455 format
+        contains_pattern, choice, user_rank = utils.read_user_cards(user_cards)   # Convert to numpy frequency array
         
         # Record the play
         if contains_pattern:
             choice = np.array(choice)
             self.hand -= choice
+            leading_rank = user_rank
         return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
         
             

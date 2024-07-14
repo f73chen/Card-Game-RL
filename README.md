@@ -10,8 +10,7 @@
     x Test the naive player for a few games
     x Allow the user to act as a player
     x Write a comprehensive moveset of patterns
-    - Test user player on simple moveset
-        - Rank order when passing
+    x Test user player on simple moveset (Fix rank order when user passes)
     - Implement simple bombs
     - Decide on a format for recording the game (and maybe annotate rewards later)
     - Ask ChatGPT to improve the code
