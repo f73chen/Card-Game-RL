@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import pickle
 
 import utils
 from consts import *
@@ -11,6 +12,7 @@ class GameEnv:
         self.win_mode = win_mode
         self.moveset = moveset
         self.has_user = has_user
+        self.history = []
         
         self.reset()
 
@@ -66,6 +68,9 @@ class GameEnv:
         
         # Players play in order until the game is over (empty hand)
         while True:
+            # Record the current state
+            curr_state = self.get_state(curr_player)
+            
             # If all other players skip their turn, the current player is free to move
             if skip_count == self.num_players - 1:
                 self.players[curr_player].free = True
@@ -88,7 +93,20 @@ class GameEnv:
             else:
                 print(f"Skip. Skip count: {skip_count}")
             print()
-        
+            
+            # Record the player action and new state
+            action = {"player": curr_player,
+                      "contains_pattern": contains_pattern,
+                      "pattern": pattern,
+                      "choice": prev_choice,
+                      "leading_rank": leading_rank}
+            new_state = self.get_state(curr_player)
+            reward = self.calculate_reward(curr_player, contains_pattern, remainder)
+            self.history.append({"state": curr_state, 
+                                 "action": action, 
+                                 "new_state": new_state, 
+                                 "reward": reward})
+            
             # Check if the game is over
             if remainder <= 0:
                 break
@@ -97,6 +115,29 @@ class GameEnv:
             curr_player = (curr_player + 1) % self.num_players
             
         print(f"Game over. Winner is player {curr_player}")
+        return self.history
+        
+    def get_state(self, curr_player):
+        return {"curr_player": curr_player,
+                "hands": [player.hand.copy() for player in self.players],
+                "free": self.players[curr_player].free}
+
+    def calculate_reward(self, curr_player, contains_pattern, remainder):
+        if remainder == 0:
+            return 10   # Win
+        elif contains_pattern:
+            return 0.1  # Successful move
+        else:
+            return -0.1 # Skipped turn
+        
+    def replay(self, history):
+        for step in history:
+            print(f"Player {step['action']['player']} action:")
+            print(f"State: {step['state']}")
+            print(f"Action: {step['action']}")
+            print(f"New State: {step['new_state']}")
+            print(f"Reward: {step['reward']}")
+            print()
 
 class NaivePlayer:
     def __init__(self, hand, moveset, free=False):
@@ -152,6 +193,9 @@ class UserPlayer:
         return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
         
             
-env = GameEnv(num_decks=2, has_user=True)
-env.play_game()
+env = GameEnv(num_decks=1, has_user=True)
+history = env.play_game()
+pickle.dump(history, open("game.pkl", "wb"))
 
+history = pickle.load(open("game.pkl", "rb"))
+env.replay(history)
