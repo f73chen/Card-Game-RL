@@ -204,25 +204,130 @@ def write_user_cards(hand):
     return card_str
     
 # Convert card string to frequency array
-def read_user_cards(user_cards, pattern):
-    if not user_cards:
-        return False, pattern, None, -1
-    else:
+def read_user_cards(user_cards, pattern, leading_rank, hand):
+    """
+    params:
+        user_cards: String of cards like "334455"
+        pattern: String name of the pattern like "3+2"
+        leading_rank: The previous leading rank
+    """
+    if not user_cards:  # User chose to skip the turn
+        return False, pattern, None, -1, True
+    
+    else:   # Did not skip turn
+        # Note: If free to move, the leading rank is already reset to -1 in main.py
         choice = [0] * 15
         # Check if the user played a bomb then update pattern and choice
-        if user_cards[0] == user_cards[-1]:
-            pattern = str(len(user_cards))
+        # If length = 1, 2, or 3, it is a regular play and the pattern can only be set by the player if the player was free to move
+        # If length >= 4, it is a bomb that can overwrite the pattern
+        if user_cards[0] == user_cards[-1] and len(user_cards) >= 4:
+            new_pattern = len(user_cards)
+            if pattern not in BOMB_SET or new_pattern > float(pattern):
+                pattern = str(new_pattern)
+                leading_rank = -1
             choice[RANKS[user_cards[0]]] = len(user_cards)
         elif user_cards == "SL":
-            pattern = "4.5"
+            if pattern not in BOMB_SET or 4.5 > float(pattern):
+                pattern = "4.5"
+                leading_rank = -1
             choice[13] = 1
             choice[14] = 1
         elif user_cards == "SSLL":
-            pattern = "8.5"
+            if pattern not in BOMB_SET or 8.5 > float(pattern):
+                pattern = "8.5"
+                leading_rank = -1
             choice[13] = 2
             choice[14] = 2
-        # Else keep following the previous pattern
+        # If no bomb, just count cards assuming the previous pattern is unchanged
         else:
             for c in user_cards:
                 choice[RANKS[c]] += 1
-        return True, pattern, choice, RANKS[user_cards[0]]
+                
+        return True, pattern, choice, RANKS[user_cards[0]], is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand)
+    
+# Check if the user input card string matches the pattern
+# Currently covers all patterns in the simple moveset
+# Assume leading_rank is set to -1 if a new pattern is chosen (ex. free, bomb)
+# leading_rank only matters if the previous pattern continues
+def is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand):
+    """
+    params:
+        pattern: String name of the pattern like "3+2"
+        choice: Numpy frequency array like [1 1 1 3 0 1 1 2 0 2 1 0 1 0 0]
+        leading_rank: The previous leading rank
+    """
+    ranks = [RANKS[c] for c in user_cards]
+    
+    # New leading rank must be higher than the previous leading rank
+    if RANKS[user_cards[0]] <= leading_rank:
+        return False
+    
+    # All selected cards must be in the player's hand
+    new_hand = hand - choice
+    if min(new_hand) < 0:
+        return False
+    
+    match pattern:
+        case "1x5":
+            if sum(choice) != 5 or set(choice) != {0, 1}:   # 5 singular cards
+                return False
+            if max(ranks) - min(ranks) != 4:                # Consecutive ranks
+                return False
+            
+        case "2x3":
+            if sum(choice) != 6 or set(choice) != {0, 2}:   # 3 pairs of cards
+                return False
+            if max(ranks) - min(ranks) != 2:                # Consecutive ranks
+                return False
+            
+        case "3+1":
+            if sum(choice) != 4 or set(choice) != {0, 1, 3}:    # 1 triple and 1 singular card
+                return False
+            
+        case "3+2":
+            if sum(choice) != 5 or set(choice) != {0, 2, 3}:    # 1 triple and 1 pair of cards
+                return False
+            
+        case "1":
+            if sum(choice) != 1 or set(choice) != {0, 1}:       # 1 singular card
+                return False
+            
+        case "2":
+            if sum(choice) != 2 or set(choice) != {0, 2}:       # 1 pair of cards
+                return False
+            
+        case "3":
+            if sum(choice) != 3 or set(choice) != {0, 3}:       # 1 triple
+                return False
+            
+        case "4":
+            if sum(choice) != 4 or set(choice) != {0, 4}:       # 1 4-card bomb
+                return False
+            
+        case "5":
+            if sum(choice) != 5 or set(choice) != {0, 5}:       # 1 5-card bomb
+                return False
+            
+        case "6":
+            if sum(choice) != 6 or set(choice) != {0, 6}:       # 1 6-card bomb
+                return False
+            
+        case "7":
+            if sum(choice) != 7 or set(choice) != {0, 7}:       # 1 7-card bomb
+                return False
+            
+        case "8":
+            if sum(choice) != 8 or set(choice) != {0, 8}:       # 1 8-card bomb
+                return False
+            
+        # Note: Joker bombs were hardcoded in read_user_cards(), no need to check here
+        case "4.5":
+            pass
+        
+        case "8.5":
+            pass
+            
+        case _:
+            raise NotImplementedError("Pattern not available")
+        
+    return True

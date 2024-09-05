@@ -6,7 +6,7 @@ import utils
 from consts import *
 
 class GameEnv:
-    def __init__(self, num_players=4, num_decks=1, win_mode="individual", moveset=MOVESET_1, has_user=False):
+    def __init__(self, num_players=4, num_decks=1, win_mode="individual", moveset=MOVESET_1, has_user=False, seed=None):
         self.num_players = num_players
         self.num_decks = num_decks
         self.win_mode = win_mode
@@ -14,13 +14,17 @@ class GameEnv:
         self.has_user = has_user
         self.history = []
         
-        self.reset()
+        self.reset(seed)
 
-    def reset(self):
+    def reset(self, seed=None):
         print(f"New game with {self.num_players} players and {self.num_decks} deck(s) of cards.")
         
         card_freq = np.array(CARD_FREQ) * self.num_decks
         cards_per_player = CARDS_PER_PLAYER[f"{self.num_players}_{self.num_decks}"]
+        
+        if seed is not None:
+            print(f"Seed: {seed}")
+            random.seed(seed)
         
         # Randomly divide into 4 piles of cards then decide which player gets which pile and who starts
         # Game mode must be individual or pairs (no landlord; assume individual for now)
@@ -47,7 +51,7 @@ class GameEnv:
         
         if self.has_user:
             self.players = [NaivePlayer(hand=self.hands[p], moveset=self.moveset) for p in range(self.num_players - 1)]
-            self.players.append(UserPlayer(hand=self.hands[-1], moveset=self.moveset))
+            self.players.append(UserPlayer(hand=self.hands[-1], moveset=self.moveset))  # User player is always the last player
         else:
             self.players = [NaivePlayer(hand=self.hands[p], moveset=self.moveset) for p in range(self.num_players)]
         
@@ -149,6 +153,7 @@ class NaivePlayer:
         # If free to move, play the smallest available hand
         # Doesn't care about previous cards or leading rank
         if self.free:
+            leading_rank = -1   # Reset the leading rank
             self.free = False
             random.shuffle(self.moveset)
             for pattern in self.moveset:
@@ -172,19 +177,45 @@ class UserPlayer:
         self.moveset = moveset
         self.free = free
         
-    # Assume the user always makes a valid move
     # The first card is the leading rank
     def move(self, pattern=None, prev_choice=None, leading_rank=-1):
         # Get the user input
         print(f"Hand: {utils.write_user_cards(self.hand)}")
         
-        if self.free:
-            print("FREE TO MOVE")
-            pattern = input("Enter the pattern: ")  # 1x5 format
-            self.free = False
-        user_cards = input("Enter your move: ")    # 334455 format
-        contains_pattern, pattern, choice, user_rank = utils.read_user_cards(user_cards, pattern)   # Convert to numpy frequency array
+        while True:
+            valid_input = True
+            if self.free:
+                leading_rank = -1   # Reset the leading rank
+                print("FREE TO MOVE")
+                pattern = input("Enter the pattern: ")  # 1x5 format
+                
+                # Check if the pattern exists in the moveset
+                if not pattern in self.moveset:
+                    print("Invalid pattern. Please try again.")
+                    print(self.hand, {utils.write_user_cards(self.hand)})
+                    continue
+                
+            # Assumes the first card is the leading rank
+            user_cards = input("Enter your move: ")    # 334455 format
+            
+            # Check if all cards are known in the card set
+            for c in user_cards:
+                if c not in CARDS.values():
+                    valid_input = False
+            
+            if valid_input:
+                contains_pattern, pattern, choice, user_rank, valid_input = utils.read_user_cards(user_cards, pattern, leading_rank, self.hand)   # Convert to numpy frequency array
+                
+            # Escape the while loop only if the input is valid
+            if not valid_input:
+                print("Invalid card selection. Please try again.")
+                print(self.hand, {utils.write_user_cards(self.hand)})
+            else:
+                break
         
+        # After a successful move, the player is no longer free to move
+        self.free = False
+            
         # Record the play
         if contains_pattern:
             choice = np.array(choice)
@@ -192,10 +223,11 @@ class UserPlayer:
             leading_rank = user_rank
         return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
         
-            
-env = GameEnv(num_decks=1, has_user=True)
-history = env.play_game()
-pickle.dump(history, open("game.pkl", "wb"))
 
-history = pickle.load(open("game.pkl", "rb"))
-env.replay(history)
+env = GameEnv(num_decks=2, has_user=True, seed=0)
+history = env.play_game()
+
+# game_name = "user_game_0.pkl"
+# pickle.dump(history, open(game_name, "wb"))
+# history = pickle.load(open(game_name, "rb"))
+# env.replay(history)
