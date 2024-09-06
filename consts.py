@@ -13,8 +13,8 @@ CARDS = {0: "3",
          10: "K",
          11: "A",
          12: "2",
-         13: "S",
-         14: "L"}
+         13: "S",   # Small Joker
+         14: "L"}   # Large Joker
 
 RANKS = {"3": 0,
          "4": 1,
@@ -29,18 +29,23 @@ RANKS = {"3": 0,
          "K": 10,
          "A": 11,
          "2": 12,
-         "S": 13,
-         "L": 14}
+         "S": 13,   # Small Joker
+         "L": 14}   # Large Joker
 
 BOMB_SET = ["4", "5", "6", "7", "8", "4.5", "8.5"]
 
+# In each deck there are 4 of each card, small joker, and large joker
 CARD_FREQ = [4] * 13 + [1, 1]
 
-CARDS_PER_PLAYER = {"4_1": [14, 14, 13, 13],
-                    "4_2": [27, 27, 27, 27]}
+# Number of cards to deal to each player depending on the number of players and decks
+CARDS_PER_PLAYER = {"indv": {4: {1: [14, 14, 13, 13],
+                                 2: [27, 27, 27, 27]},
+                             3: {1: [18, 18, 18],
+                                 2: [36, 36, 36]}},
+                    "lord": {3: {1: [17, 17, 17, 3],    # 17 cards each and 3 to the landlord
+                                 2: [34, 34, 34, 6]}}}  # 34 cards each and 6 to the landlord
 
 # Simplified moveset
-# One of each type, no bombs
 MOVESET_1 = ["1x5",
              
              "2x3",
@@ -56,66 +61,65 @@ MOVESET_1 = ["1x5",
              "6",
              "7",
              "8",
-             "4.5",
-             "8.5"]
+             "4.5", # Small Joker bomb
+             "8.5"] # Large Joker bomb
 
 # Comprehensive moveset
-# Assume each hand can have up to 27 cards
-MOVESET_2 = ["1x5",
-             "1x6",
-             "1x7",
-             "1x8",
-             "1x9",
-             "1x10",
-             "1x11",
-             "1x12",
-             "1x13",
+MOVESET_2 = ["1x5",     # 5 Consecutive Singles
+             "1x6",     # 6 Consecutive Singles
+             "1x7",     # 7 Consecutive Singles
+             "1x8",     # 8 Consecutive Singles
+             "1x9",     # 9 Consecutive Singles
+             "1x10",    # 10 Consecutive Singles
+             "1x11",    # 11 Consecutive Singles
+             "1x12",    # 12 Consecutive Singles
+             "1x13",    # 13 Consecutive Singles
              
-             "2x3",
-             "2x4",
-             "2x5",
-             "2x6",
-             "2x7",
-             "2x8",
-             "2x9",
-             "2x10",
-             "2x11",
-             "2x12",
-             "2x13",
+             "2x3",     # 3 Consecutive Pairs
+             "2x4",     # 4 Consecutive Pairs
+             "2x5",     # 5 Consecutive Pairs
+             "2x6",     # 6 Consecutive Pairs
+             "2x7",     # 7 Consecutive Pairs
+             "2x8",     # 8 Consecutive Pairs
+             "2x9",     # 9 Consecutive Pairs
+             "2x10",    # 10 Consecutive Pairs
+             "2x11",    # 11 Consecutive Pairs
+             "2x12",    # 12 Consecutive Pairs
+             "2x13",    # 13 Consecutive Pairs
              
-             "3+1",
-             "3x2+1",
-             "3x3+1",
-             "3x4+1",
-             "3x5+1",
-             "3x6+1",
+             "3+1",     # Triple + Single
+             "3x2+1",   # 2 Triples + 2 Singles
+             "3x3+1",   # 3 Triples + 3 Singles
+             "3x4+1",   # 4 Triples + 4 Singles
+             "3x5+1",   # 5 Triples + 5 Singles
+             "3x6+1",   # 6 Triples + 6 Singles
              
-             "3+2",
-             "3x2+2",
-             "3x3+2",
-             "3x4+2",
-             "3x5+2",
+             "3+2",     # Triple + Pair
+             "3x2+2",   # 2 Triples + 2 Pairs
+             "3x3+2",   # 3 Triples + 3 Pairs
+             "3x4+2",   # 4 Triples + 4 Pairs
+             "3x5+2",   # 5 Triples + 5 Pairs
              
-             "4+1", # 2
-             "4+2",
-             "5+1", # 3
-             "5+2",
-             "6+1", # 4
-             "6+2",
-             "7+1", # 5
-             "7+2",
-             "8+1", # 6
-             "8+2",
+             "4+1",     # Quadruple + 2 Singles
+             "4+2",     # Quadruple + 2 Pairs
+             "5+1",     # Quintuple + 3 Singles
+             "5+2",     # Quintuple + 3 Pairs
+             "6+1",     # Sextuple + 4 Singles
+             "6+2",     # Sextuple + 4 Pairs
+             "7+1",     # Septuple + 5 Singles
+             "7+2",     # Septuple + 5 Pairs
+             "8+1",     # Octuple + 6 Singles
+             "8+2",     # Octuple + 6 Pairs
              
-             "1",
-             "2",
-             "3",
+             "1",       # Single
+             "2",       # Pair
+             "3",       # Triple
              
-             "4",   # Bombs
-             "5",
-             "6",
-             "7",
-             "8",
-             "4.5", # 1 pair of Jokers
-             "8.5"] # 2 pairs of Jokers
+             "4",       # 4-Bomb
+             "5",       # 5-Bomb
+             "6",       # 6-Bomb
+             "7",       # 7-Bomb
+             "8",       # 8-Bomb
+             "4.5",     # Small Joker bomb
+             "8.5"]     # Large Joker bomb
 
