@@ -4,6 +4,7 @@ import pickle
 
 import utils
 from consts import *
+from train import RNN_DQN
 
 class GameEnv:
     def __init__(self, num_decks=1, num_players=4, players=[], mode="indv", moveset=MOVESET_1, seed=None):
@@ -154,6 +155,9 @@ class GameEnv:
         
         
     def play_game(self):
+        """
+        Lets players move in order until the game is over.
+        """
         # Reset temporary variables
         self.players[self.curr_player].free = True
         contains_pattern = True
@@ -229,12 +233,22 @@ class GameEnv:
         return self.game_history
         
     def get_state(self):
+        """
+        Record the current state of the game.
+        """
         # TODO: Change the state representation
         return {"curr_player": self.curr_player,
                 "hands": [player.hand.copy() for player in self.players],
                 "free": self.players[self.curr_player].free}
 
     def calculate_reward(self, contains_pattern, remainder):
+        """
+        Calculate the reward for a particular action.
+        
+        params:
+            contains_pattern (bool):    Whether the player made a valid move
+            remainder        (int):     Number of cards remaining in the player's hand
+        """
         # TODO: Change the reward calculation
         if remainder == 0:
             return 10   # Win
@@ -244,6 +258,12 @@ class GameEnv:
             return -0.1 # Skipped turn
         
     def replay(self, history):
+        """
+        Re-enact the game based on the recorded history.
+        
+        params:
+            history (list): List of dictionaries containing state, action, new state, and reward
+        """
         # TODO: Change how the history is replayed
         for step in history:
             print(f"Player {step['action']['player']} action:")
@@ -252,6 +272,20 @@ class GameEnv:
             print(f"New State: {step['new_state']}")
             print(f"Reward: {step['reward']}")
             print()
+            
+            
+    # TODO: Implement playing with RL model
+    # def play_with_model(self, model, num_games=1):
+    #     for _ in range(num_games):
+    #         state = self.reset()
+    #         done = False
+    #         while not done:
+    #             with torch.no_grad():
+    #                 action = torch.argmax(model(torch.tensor(state, dtype=torch.float32).unsqueeze(0))).item()
+    #             state, reward, done, _ = self.step(action)
+    #             # Add logic to handle NPCs and human players
+    #             # For NPCs, you can use predefined strategies or random actions
+    #             # For human players, you can prompt for input
             
          
             
@@ -270,6 +304,21 @@ class DefaultPlayer(Player):
         
         
     def move(self, pattern=None, prev_choice=None, leading_rank=-1):
+        """
+        Make a random valid move based on the current state of the game.
+        
+        params:
+            pattern      (str):  The pattern of the previous player
+            prev_choice  (array): The cards played by the previous player
+            leading_rank (int):  The rank of the leading card
+            
+        returns:
+            contains_pattern (bool): Whether the player made a valid move
+            pattern          (str):  The pattern of the move
+            choice           (array): The cards played by the player
+            leading_rank     (int):  The rank of the leading card
+            remainder        (int):  Number of cards remaining in the player's hand
+        """
         # If free to move, play the smallest available hand for a random available pattern
         if self.free:
             leading_rank = -1   # Reset the leading rank
@@ -291,8 +340,16 @@ class DefaultPlayer(Player):
         return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
     
     
-    # Randomly decide whether to claim the landlord cards
     def claim_landlord(self, cards):
+        """
+        Randomly decide whether to claim the landlord cards.
+        
+        params:
+            cards (array): The remaining cards in the deck [Unused]
+            
+        returns:
+            landlord (bool): Whether the player claims the landlord cards
+        """
         self.landlord = random.choice([True, False])
         return self.landlord
     
@@ -305,6 +362,21 @@ class UserPlayer(Player):
 
     # The first card is the leading rank
     def move(self, pattern=None, prev_choice=None, leading_rank=-1):
+        """
+        Asks the user to input a move based on the current state of the game.
+        
+        params:
+            pattern      (str):  The pattern of the previous player
+            prev_choice  (array): The cards played by the previous player
+            leading_rank (int):  The rank of the leading card
+            
+        returns:
+            contains_pattern (bool): Whether the player made a valid move
+            pattern          (str):  The pattern of the move
+            choice           (array): The cards played by the player
+            leading_rank     (int):  The rank of the leading card
+            remainder        (int):  Number of cards remaining in the player's hand
+        """
         # Get the user input
         print(f"Hand: {utils.freq_array_to_card_str(self.hand)}")
         
@@ -349,9 +421,17 @@ class UserPlayer(Player):
             leading_rank = user_rank
         return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
     
-    
-    # Choose whether to claim the landlord cards
+
     def claim_landlord(self, cards):
+        """
+        Lets the user choose whether to claim the landlord cards.
+        
+        params:
+            cards (array): The remaining cards in the deck
+            
+        returns:
+            landlord (bool): Whether the player claims the landlord cards
+        """
         print(f"Landlord cards: {utils.freq_array_to_card_str(cards)}")
         self.landlord = input("Claim the landlord cards? (y/n): ") == "y"
         return self.landlord
@@ -373,10 +453,19 @@ class RLPlayer(Player):
         
 
 env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
-
 env.reset()
 history = env.play_game()
+
 # game_name = "user_game_0.pkl"
 # pickle.dump(history, open(game_name, "wb"))
 # history = pickle.load(open(game_name, "rb"))
 # env.replay(history)
+
+# # Load the model for inference
+# rnn_dqn = RNN_DQN(state_size, action_size)
+# rnn_dqn.load_state_dict(torch.load('rnn_dqn_model.pth'))
+# rnn_dqn.eval()
+
+# # Example usage
+# env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
+# env.play_with_model(rnn_dqn, num_games=10)

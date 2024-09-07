@@ -2,9 +2,10 @@ import random
 import numpy as np
 from consts import *
 
-# Choose the smallest playable hand given a pattern
 def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
     """
+    Choose the smallest playable hand given a pattern
+    
     params:
         hand: Numpy frequency array like [1 1 1 3 0 1 1 2 0 2 1 0 1 0 0]
         pattern: String name of the pattern like "3+2"
@@ -143,7 +144,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
                     leading_rank = rank
                     break
                 
-        # Small bomb, handle later with card bomb
+        # Small bomb, already handled later with card bomb
         case "4.5":
             pass
         
@@ -207,9 +208,10 @@ def freq_array_to_card_str(hand):
     return card_str
     
     
-# Convert card string to frequency array
 def read_user_cards(user_cards, pattern, leading_rank, hand):
     """
+    Convert card string to frequency array.
+    
     params:
         user_cards: String of cards like "334455"
         pattern: String name of the pattern like "3+2"
@@ -250,12 +252,13 @@ def read_user_cards(user_cards, pattern, leading_rank, hand):
         return True, pattern, choice, RANKS[user_cards[0]], is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand)
     
     
-# Check if the user input card string matches the pattern
-# Currently covers all patterns in the simple moveset
-# Assume leading_rank is set to -1 if a new pattern is chosen (ex. free, bomb)
-# leading_rank only matters if the previous pattern continues
 def is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand):
     """
+    Check if the user input card string matches the pattern
+    Currently covers all patterns in the simple moveset
+    Assume leading_rank is set to -1 if a new pattern is chosen (ex. free, bomb)
+    leading_rank only matters if the previous pattern continues
+    
     params:
         pattern: String name of the pattern like "3+2"
         choice: Numpy frequency array like [1 1 1 3 0 1 1 2 0 2 1 0 1 0 0]
