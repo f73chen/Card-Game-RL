@@ -6,7 +6,7 @@ import utils
 from consts import *
 
 class GameEnv:
-    def __init__(self, num_decks=1, num_players=4, players=[], win_mode="indv", moveset=MOVESET_1, seed=None):
+    def __init__(self, num_decks=1, num_players=4, players=[], mode="indv", moveset=MOVESET_1, seed=None):
         """
         Initialize variables that are constant across all games.
         
@@ -14,14 +14,14 @@ class GameEnv:
             num_decks   (int):      Number of decks of cards to use (1 or 2)
             num_players (int):      Number of players in the game (3 or 4)
             players     (Player):   List of player objects
-            win_mode    (str):      "indv" for individual or "lord" for landlord
+            mode        (str):      "indv" for individual or "lord" for landlord
             moveset     (array):    Simplified or comprehensive moveset
             seed        (int):      Random seed
         """
         self.num_players = num_players
         self.num_decks = num_decks
         self.players = players
-        self.win_mode = win_mode
+        self.mode = mode
         self.moveset = moveset
         self.game_history = []      # Record the game history for training
         self.landlord_idx = None    # Index of the landlord player
@@ -39,12 +39,12 @@ class GameEnv:
         Adjust the number of players and decks based on the win mode.
         """
         # Individual can have 3 or 4 players, landlord can only have 3 players
-        if self.win_mode == "indv":
+        if self.mode == "indv":
             if self.num_players < 3:
                 self.num_players = 3
             elif self.num_players > 4:
                 self.num_players = 4
-        elif self.win_mode == "lord":
+        elif self.mode == "lord":
             self.num_players = 3
         
         # Number of decks can only be 1 or 2
@@ -66,18 +66,18 @@ class GameEnv:
         random.shuffle(self.players)
         
         
-    def deal_cards(self, num_players, num_decks, win_mode):
+    def deal_cards(self, num_players, num_decks, mode):
         """
         Deal cards to the players based on the number of players and win mode.
         
         params:
             num_players (int):  Number of players in the game
             num_decks   (int):  Number of decks of cards to use
-            win_mode    (str):  "indv" for individual or "lord" for landlord
+            mode        (str):  "indv" for individual or "lord" for landlord
         """
         card_freq = np.array(CARD_FREQ) * num_decks # Total number of cards in the deck(s)
         
-        if win_mode == "indv":
+        if mode == "indv":
             cards_per_player = CARDS_PER_PLAYER["indv"][num_players][num_decks]
             hands = [np.array([0] * NUM_RANKS) for _ in range(num_players)] # Start with empty hands
             
@@ -99,7 +99,7 @@ class GameEnv:
             for p in range(num_players):
                 self.players[p].hand = hands[p]
             
-        elif win_mode == "lord":
+        elif mode == "lord":
             cards_per_player = CARDS_PER_PLAYER["lord"][num_players][num_decks][0]
             hands = [np.array([0] * NUM_RANKS) for _ in range(num_players)]
             
@@ -120,17 +120,21 @@ class GameEnv:
                 self.players[p].hand = hands[p]
                 
             # Players take turns to claim the landlord cards, starting from player 0
-            # If all refuse, player 0 gets the landlord cards
             for p in range(num_players):
                 claimed = self.players[p].claim_landlord(card_freq)
+                print(f"Player {p} claims the landlord cards: {claimed}")
                 if claimed:
                     self.landlord_idx = p
                     self.curr_player = p    # The landlord always starts first
                     break
+                
+            # If all refuse, player 0 must become the landlord
             if self.landlord_idx is None:
                 self.landlord_idx = 0
-                self.players[0].hand += card_freq
-                self.players[0].landlord = True     # TODO: Add landlord attribute to player object
+                self.players[0].landlord = True
+                
+            # Add the cards to the landlord's hand
+            self.players[self.landlord_idx].hand += card_freq
 
 
     def reset(self):
@@ -142,11 +146,11 @@ class GameEnv:
         self.landlord_idx = None
         self.curr_player = 0
             
-        print(f"New {self.win_mode} game with {self.num_players} players and {self.num_decks} deck(s) of cards.")
+        print(f"New {self.mode} game with {self.num_players} players and {self.num_decks} deck(s) of cards.")
         
         # Deal the regular hand, then the landlord hand
         print("Dealing cards...")
-        self.deal_cards(self.num_players, self.num_decks, self.win_mode)
+        self.deal_cards(self.num_players, self.num_decks, self.mode)
         
         
     def play_game(self):
@@ -163,15 +167,18 @@ class GameEnv:
         # TODO: Change what gets printed
         def print_game(start=False):
             if contains_pattern:
-                if not start:
-                    print(f"Choice: {prev_choice}, pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}")
-                    print()
-                for player in self.players:
-                    print(player.hand, sum(player.hand))
+                if start:
+                    for idx, player in enumerate(self.players):
+                        print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__}")
+                else:
+                    print(f"Choice: {prev_choice}, pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
+                    for idx, player in enumerate(self.players):
+                        print(f"Player {idx}: {player.hand} {sum(player.hand)}")
+                print()
             else:
-                print(f"Skip. Skip count: {skip_count}")
+                print(f"Skip. Skip count: {skip_count}\n")
             
-            print(f"Current player: {self.curr_player}")
+            print(f"Current player: {self.curr_player}\n")
                 
         print_game(start=True)
         
@@ -182,11 +189,11 @@ class GameEnv:
             
             # If all other players skip their turn, the current player is free to move
             if skip_count == self.num_players - 1:
-                self.players[curr_player].free = True
+                self.players[self.curr_player].free = True
                 skip_count = 0
             
             # Player makes a move
-            contains_pattern, pattern, prev_choice, leading_rank, remainder = self.players[curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
+            contains_pattern, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
             
             # If the player didn't make a move, increment the skip count
             if not contains_pattern:
@@ -194,17 +201,15 @@ class GameEnv:
             else:
                 skip_count = 0
             
-            print_game(start=False)
-            
             # Record the player action and new state
             # TODO: Change how the history is recorded
-            action = {"player": curr_player,
+            action = {"player": self.curr_player,
                       "contains_pattern": contains_pattern,
                       "pattern": pattern,
                       "choice": prev_choice,
                       "leading_rank": leading_rank}
-            new_state = self.get_state(curr_player)
-            reward = self.calculate_reward(curr_player, contains_pattern, remainder)
+            new_state = self.get_state()
+            reward = self.calculate_reward(contains_pattern, remainder)
             self.game_history.append({"state": curr_state, 
                                  "action": action, 
                                  "new_state": new_state, 
@@ -216,18 +221,20 @@ class GameEnv:
                 break
             
             # Else, continue to the next player
-            curr_player = (curr_player + 1) % self.num_players
+            self.curr_player = (self.curr_player + 1) % self.num_players
+            print_game(start=False)
             
-        print(f"Game over. Winner is player {curr_player}")
+        # TODO: Add win state for landlord mode
+        print(f"Game over. Winner is player {self.curr_player}")
         return self.game_history
         
-    def get_state(self, curr_player):
+    def get_state(self):
         # TODO: Change the state representation
-        return {"curr_player": curr_player,
+        return {"curr_player": self.curr_player,
                 "hands": [player.hand.copy() for player in self.players],
-                "free": self.players[curr_player].free}
+                "free": self.players[self.curr_player].free}
 
-    def calculate_reward(self, curr_player, contains_pattern, remainder):
+    def calculate_reward(self, contains_pattern, remainder):
         # TODO: Change the reward calculation
         if remainder == 0:
             return 10   # Win
@@ -252,6 +259,7 @@ class Player:
     def __init__(self):
         self.hand = None
         self.moveset = None
+        self.landlord = False
         self.free = False
             
          
@@ -285,7 +293,8 @@ class DefaultPlayer(Player):
     
     # Randomly decide whether to claim the landlord cards
     def claim_landlord(self, cards):
-        return random.choice([True, False])
+        self.landlord = random.choice([True, False])
+        return self.landlord
     
     
     
@@ -344,8 +353,8 @@ class UserPlayer(Player):
     # Choose whether to claim the landlord cards
     def claim_landlord(self, cards):
         print(f"Landlord cards: {utils.freq_array_to_card_str(cards)}")
-        claim = input("Claim the landlord cards? (y/n): ")
-        return claim == "y"
+        self.landlord = input("Claim the landlord cards? (y/n): ") == "y"
+        return self.landlord
         
         
         
@@ -363,10 +372,10 @@ class RLPlayer(Player):
         pass
         
 
-env = GameEnv(num_decks=1, num_players=4, seed=0)
-# env = GameEnv(num_decks=1, num_players=4, players=[UserPlayer()], seed=0)
+env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
 
-# history = env.play_game()
+env.reset()
+history = env.play_game()
 # game_name = "user_game_0.pkl"
 # pickle.dump(history, open(game_name, "wb"))
 # history = pickle.load(open(game_name, "rb"))

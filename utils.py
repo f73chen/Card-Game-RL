@@ -249,6 +249,7 @@ def read_user_cards(user_cards, pattern, leading_rank, hand):
                 
         return True, pattern, choice, RANKS[user_cards[0]], is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand)
     
+    
 # Check if the user input card string matches the pattern
 # Currently covers all patterns in the simple moveset
 # Assume leading_rank is set to -1 if a new pattern is chosen (ex. free, bomb)
