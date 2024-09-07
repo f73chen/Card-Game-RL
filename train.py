@@ -7,19 +7,43 @@ from collections import deque
 
 from main import GameEnv
 
-# TODO: Rewrite this whole page
+# TODO: Rewrite this whole page --> LSTM-DQN
 
+# Define an enhanced RNN-DQN model with embedding layers and attention mechanism
 class RNN_DQN(nn.Module):
-    def __init__(self, state_size, action_size, hidden_size=128, num_layers=1):
+    def __init__(self, state_size, action_size, hidden_size=128, num_layers=1, embedding_dim=64):
         super(RNN_DQN, self).__init__()
-        self.rnn = nn.LSTM(state_size, hidden_size, num_layers, batch_first=True)
+        # Embeddings for moveset and card ranks
+        self.moveset_embedding = nn.Embedding(num_embeddings=50, embedding_dim=embedding_dim)  # Assuming max 50 move patterns
+        self.rank_embedding = nn.Embedding(num_embeddings=15, embedding_dim=embedding_dim)  # 15 possible ranks
+
+        # LSTM layers
+        self.lstm = nn.LSTM(state_size + 2 * embedding_dim, hidden_size, num_layers, batch_first=True)
+
+        # Attention mechanism
+        self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=4, batch_first=True)
+        
+        # Fully connected layer for final action selection
         self.fc = nn.Linear(hidden_size, action_size)
 
-    def forward(self, x):
+    def forward(self, x, moves, ranks):
+        # Embedding the moveset and ranks
+        moves_embedded = self.moveset_embedding(moves)
+        ranks_embedded = self.rank_embedding(ranks)
+
+        # Concatenating state with embeddings
+        x = torch.cat((x, moves_embedded, ranks_embedded), dim=-1)
+
+        # Passing through LSTM
         h0 = torch.zeros(1, x.size(0), 128).to(x.device)
         c0 = torch.zeros(1, x.size(0), 128).to(x.device)
-        out, _ = self.rnn(x, (h0, c0))
-        out = self.fc(out[:, -1, :])
+        out, _ = self.lstm(x, (h0, c0))
+
+        # Applying attention mechanism
+        attn_output, _ = self.attention(out, out, out)
+
+        # Passing through fully connected layer
+        out = self.fc(attn_output[:, -1, :])
         return out
 
 class ReplayBuffer:
