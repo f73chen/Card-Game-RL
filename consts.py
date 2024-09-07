@@ -42,8 +42,8 @@ CARDS_PER_PLAYER = {"indv": {4: {1: [14, 14, 13, 13],
                                  2: [27, 27, 27, 27]},
                              3: {1: [18, 18, 18],
                                  2: [36, 36, 36]}},
-                    "lord": {3: {1: [17, 17, 17, 3],    # 17 cards each and 3 to the landlord
-                                 2: [34, 34, 34, 6]}}}  # 34 cards each and 6 to the landlord
+                    "lord": {3: {1: ([17, 17, 17], 3),    # 17 cards each and 3 to the landlord
+                                 2: ([34, 34, 34], 6)}}}  # 34 cards each and 6 to the landlord
 
 # Simplified moveset
 MOVESET_1 = ["1x5",

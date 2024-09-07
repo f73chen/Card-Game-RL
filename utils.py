@@ -1,3 +1,5 @@
+import random
+import numpy as np
 from consts import *
 
 # Choose the smallest playable hand given a pattern
@@ -196,12 +198,14 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
     
     return contains_pattern, pattern, choice, leading_rank
 
+
 # Convert frequency array to card string
-def write_user_cards(hand):
+def freq_array_to_card_str(hand):
     card_str = ""
     for rank, freq in enumerate(hand):
         card_str += CARDS[rank] * freq
     return card_str
+    
     
 # Convert card string to frequency array
 def read_user_cards(user_cards, pattern, leading_rank, hand):
