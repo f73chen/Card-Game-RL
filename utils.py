@@ -204,7 +204,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
 def freq_array_to_card_str(hand):
     card_str = ""
     for rank, freq in enumerate(hand):
-        card_str += CARDS[rank] * freq
+        card_str += CARDS[rank] * freq + " "
     return card_str
     
     

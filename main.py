@@ -4,7 +4,7 @@ import pickle
 
 import utils
 from consts import *
-from train import RNN_DQN
+# from train import RNN_DQN
 
 class GameEnv:
     def __init__(self, num_decks=1, num_players=4, players=[], mode="indv", moveset=MOVESET_1, seed=None):
@@ -123,7 +123,7 @@ class GameEnv:
             # Players take turns to claim the landlord cards, starting from player 0
             for p in range(num_players):
                 claimed = self.players[p].claim_landlord(card_freq)
-                print(f"Player {p} claims the landlord cards: {claimed}")
+                print(f"Player {p} claims the landlord cards: {claimed}\n")
                 if claimed:
                     self.landlord_idx = p
                     self.curr_player = p    # The landlord always starts first
@@ -154,7 +154,7 @@ class GameEnv:
         self.deal_cards(self.num_players, self.num_decks, self.mode)
         
         
-    def play_game(self):
+    def play_game(self, verbose=False):
         """
         Lets players move in order until the game is over.
         """
@@ -167,21 +167,37 @@ class GameEnv:
         remainder = sum(self.players[self.curr_player].hand)
         skip_count = 0
         
+        all_remaining = np.array(CARD_FREQ) * self.num_decks    # All cards left in play
+        
         # Print the current state of the game
-        # TODO: Change what gets printed
         def print_game(start=False):
             if contains_pattern:
+                # Print the initial hands at the start of the game
                 if start:
-                    for idx, player in enumerate(self.players):
-                        print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__}")
+                    if verbose:
+                        for idx, player in enumerate(self.players):
+                            print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__} ({'Landlord' if player.landlord else 'Peasant'})")
+                    else:
+                        for idx, player in enumerate(self.players):
+                            print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+                        
+                # Print the most recent move and new hands
                 else:
-                    print(f"Choice: {prev_choice}, pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
-                    for idx, player in enumerate(self.players):
-                        print(f"Player {idx}: {player.hand} {sum(player.hand)}")
+                    if verbose:
+                        print(f"Choice: [{utils.freq_array_to_card_str(prev_choice)}], pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
+                        for idx, player in enumerate(self.players):
+                            print(f"Player {idx}: {player.hand} {sum(player.hand)} ({'Landlord' if player.landlord else 'Peasant'})")
+                    else:
+                        print(f"Choice: [{utils.freq_array_to_card_str(prev_choice)}], pattern: {pattern}\n")
+                        for idx, player in enumerate(self.players):
+                            print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+                            
+                print(f"All remaining: {utils.freq_array_to_card_str(all_remaining)}")
                 print()
             else:
                 print(f"Skip. Skip count: {skip_count}\n")
             
+            # Announce the new current player
             print(f"Current player: {self.curr_player}\n")
                 
         print_game(start=True)
@@ -199,11 +215,13 @@ class GameEnv:
             # Player makes a move
             contains_pattern, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
             
-            # If the player didn't make a move, increment the skip count
-            if not contains_pattern:
-                skip_count += 1
-            else:
+            # Update the remaining cards in play
+            if contains_pattern:
+                all_remaining -= prev_choice
                 skip_count = 0
+            # If the player didn't make a move, increment the skip count
+            else:
+                skip_count += 1
             
             # Record the player action and new state
             # TODO: Change how the history is recorded
@@ -228,15 +246,18 @@ class GameEnv:
             self.curr_player = (self.curr_player + 1) % self.num_players
             print_game(start=False)
             
-        # TODO: Add win state for landlord mode
-        print(f"Game over. Winner is player {self.curr_player}")
+        # TODO: Update reward for all players based on game outcome
+        if self.mode == "indv":
+            print(f"Game over. Player {self.curr_player} wins!")
+        else:
+            print(f"Game over. {'Landlord' if self.curr_player == self.landlord_idx else 'Peasants'} win!")
         return self.game_history
         
     def get_state(self):
         """
         Record the current state of the game.
         """
-        # TODO: Change the state representation
+        # TODO: Change the state representation into what the player can actually see
         return {"curr_player": self.curr_player,
                 "hands": [player.hand.copy() for player in self.players],
                 "free": self.players[self.curr_player].free}
@@ -390,7 +411,6 @@ class UserPlayer(Player):
                 # Check if the pattern exists in the moveset
                 if not pattern in self.moveset:
                     print("Invalid pattern. Please try again.")
-                    print(self.hand, {utils.freq_array_to_card_str(self.hand)})
                     continue
                 
             # Assumes the first card is the leading rank
@@ -407,7 +427,6 @@ class UserPlayer(Player):
             # Escape the while loop only if the input is valid
             if not valid_input:
                 print("Invalid card selection. Please try again.")
-                print(self.hand, {utils.freq_array_to_card_str(self.hand)})
             else:
                 break
         
@@ -432,6 +451,7 @@ class UserPlayer(Player):
         returns:
             landlord (bool): Whether the player claims the landlord cards
         """
+        print(f"\nCards in hand: {utils.freq_array_to_card_str(self.hand)}")
         print(f"Landlord cards: {utils.freq_array_to_card_str(cards)}")
         self.landlord = input("Claim the landlord cards? (y/n): ") == "y"
         return self.landlord
@@ -452,9 +472,9 @@ class RLPlayer(Player):
         pass
         
 
-env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
+env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[UserPlayer()])
 env.reset()
-history = env.play_game()
+history = env.play_game(verbose=False)
 
 # game_name = "user_game_0.pkl"
 # pickle.dump(history, open(game_name, "wb"))
