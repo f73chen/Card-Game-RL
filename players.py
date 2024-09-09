@@ -28,11 +28,11 @@ class DefaultPlayer(Player):
             leading_rank (int):  The rank of the leading card
             
         returns:
-            contains_pattern (bool): Whether the player made a valid move
-            pattern          (str):  The pattern of the move
-            choice           (array): The cards played by the player
-            leading_rank     (int):  The rank of the leading card
-            remainder        (int):  Number of cards remaining in the player's hand
+            valid_move   (bool): Whether the player made a valid move
+            pattern      (str):  The pattern of the move
+            choice       (array): The cards played by the player
+            leading_rank (int):  The rank of the leading card
+            remainder    (int):  Number of cards remaining in the player's hand
         """
         # If free to move, play the smallest available hand for a random available pattern
         if self.free:
@@ -40,19 +40,19 @@ class DefaultPlayer(Player):
             self.free = False
             random.shuffle(self.moveset)
             for pattern in self.moveset:
-                contains_pattern, pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern)
-                if contains_pattern:
+                valid_move, pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern)
+                if valid_move:
                     break
         
         # Else follow the pattern of the player before it and play a higher rank
         else:
-            contains_pattern, pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern, leading_rank=leading_rank)
+            valid_move, pattern, choice, leading_rank = utils.smallest_valid_choice(hand=self.hand, pattern=pattern, leading_rank=leading_rank)
                 
         # Return the card choice and subtract it from its hand
-        if contains_pattern:
+        if valid_move:
             choice = np.array(choice)
             self.hand -= choice
-        return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
+        return valid_move, pattern, choice, leading_rank, np.sum(self.hand)
     
     
     def claim_landlord(self, cards):
@@ -86,11 +86,11 @@ class UserPlayer(Player):
             leading_rank (int):  The rank of the leading card
             
         returns:
-            contains_pattern (bool): Whether the player made a valid move
-            pattern          (str):  The pattern of the move
-            choice           (array): The cards played by the player
-            leading_rank     (int):  The rank of the leading card
-            remainder        (int):  Number of cards remaining in the player's hand
+            valid_move      (bool): Whether the player made a valid move
+            pattern         (str):  The pattern of the move
+            choice          (array): The cards played by the player
+            leading_rank    (int):  The rank of the leading card
+            remainder       (int):  Number of cards remaining in the player's hand
         """
         # Get the user input
         print(f"Hand: {utils.freq_array_to_card_str(self.hand)}")
@@ -116,7 +116,7 @@ class UserPlayer(Player):
                     valid_input = False
             
             if valid_input:
-                contains_pattern, pattern, choice, user_rank, valid_input = utils.read_user_cards(user_cards, pattern, leading_rank, self.hand)   # Convert to numpy frequency array
+                valid_move, pattern, choice, user_rank, valid_input = utils.read_user_cards(user_cards, pattern, leading_rank, self.hand)   # Convert to numpy frequency array
                 
             # Escape the while loop only if the input is valid
             if not valid_input:
@@ -128,11 +128,11 @@ class UserPlayer(Player):
         self.free = False
             
         # Record the play
-        if contains_pattern:
+        if valid_move:
             choice = np.array(choice)
             self.hand -= choice
             leading_rank = user_rank
-        return contains_pattern, pattern, choice, leading_rank, np.sum(self.hand)
+        return valid_move, pattern, choice, leading_rank, np.sum(self.hand)
     
 
     def claim_landlord(self, cards):

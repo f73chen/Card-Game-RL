@@ -11,10 +11,10 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         pattern: String name of the pattern like "3+2"
         
     returns:
-        contains_pattern: True or False for whether the hand contains the given pattern
+        valid_move: True or False for whether the hand contains the given pattern
         choice: The smallest set of cards that satisfy the pattern
     """
-    contains_pattern = False
+    valid_move = False
     choice = [0] * 15
     
     match pattern:
@@ -28,7 +28,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
                     singles_count = 0
                     
                 if singles_count == 5:
-                    contains_pattern = True
+                    valid_move = True
                     for i in range(5):
                         choice[rank-i] = 1
                     leading_rank = rank - 4
@@ -44,7 +44,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
                     doubles_count = 0
                     
                 if doubles_count == 3:
-                    contains_pattern = True
+                    valid_move = True
                     for i in range(3):
                         choice[rank-i] = 2
                     leading_rank = rank - 2
@@ -59,7 +59,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
             if triple_rank >= 0:
                 for rank, freq in enumerate(hand):
                     if freq >= 1 and rank != triple_rank:
-                        contains_pattern = True
+                        valid_move = True
                         choice[triple_rank] = 3
                         choice[rank] = 1
                         leading_rank = triple_rank
@@ -74,7 +74,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
             if triple_rank >= 0:
                 for rank, freq in enumerate(hand):
                     if freq >= 2 and rank != triple_rank:
-                        contains_pattern = True
+                        valid_move = True
                         choice[triple_rank] = 3
                         choice[rank] = 2
                         leading_rank = triple_rank
@@ -83,7 +83,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "1":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 1:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 1
                     leading_rank = rank
                     break
@@ -91,7 +91,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "2":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 2:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 2
                     leading_rank = rank
                     break
@@ -99,7 +99,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "3":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 3:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 3
                     leading_rank = rank
                     break
@@ -107,7 +107,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "4":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 4:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 4
                     leading_rank = rank
                     break
@@ -115,7 +115,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "5":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 5:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 5
                     leading_rank = rank
                     break
@@ -123,7 +123,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "6":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 6:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 6
                     leading_rank = rank
                     break
@@ -131,7 +131,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "7":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 7:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 7
                     leading_rank = rank
                     break
@@ -139,7 +139,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         case "8":
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 8:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = 8
                     leading_rank = rank
                     break
@@ -156,12 +156,12 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
             raise NotImplementedError("Pattern not available")
         
     # If can't play any moves, check for card bombs
-    if not contains_pattern:
+    if not valid_move:
         # If the previous pattern was not a bomb, any bomb can be played
         if pattern not in ["4", "5", "6", "7", "8", "4.5", "8.5"]:
             for rank, freq in enumerate(hand):
                 if freq >= 4:
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = freq     # Bomb with all cards of that rank
                     leading_rank = rank
                     pattern = str(freq)     # ex. "5"
@@ -171,18 +171,18 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         else:
             for rank, freq in enumerate(hand):
                 if (freq == float(pattern) and rank > leading_rank) or freq > float(pattern):
-                    contains_pattern = True
+                    valid_move = True
                     choice[rank] = freq
                     leading_rank = rank
                     pattern = str(freq)
                     break
                 
     # If there are no card bombs, check for Joker bombs
-    if not contains_pattern:
+    if not valid_move:
         # Small Joker bomb can only override regular cards and 4-bombs
         if pattern not in ["5", "6", "7", "8", "4.5"]:
             if hand[13] == 1 and hand[14] == 1:
-                contains_pattern = True
+                valid_move = True
                 choice[13] = 1
                 choice[14] = 1
                 leading_rank = 13
@@ -191,13 +191,13 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
         # Big Joker bomb can override all cards and bombs
         else:
             if hand[13] == 2 and hand[14] == 2:
-                contains_pattern = True
+                valid_move = True
                 choice[13] = 2
                 choice[14] = 2
                 leading_rank = 13
                 pattern = "8.5"
     
-    return contains_pattern, pattern, choice, leading_rank
+    return valid_move, pattern, np.array(choice), leading_rank
 
 
 # Convert frequency array to card string
@@ -339,3 +339,35 @@ def is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand):
             raise NotImplementedError("Pattern not available")
         
     return True
+
+
+# Print the current state of the game
+def print_game(valid_move, pattern, prev_choice, leading_rank, all_remaining, skip_count, curr_player, players, start=False, verbose=False):
+    if valid_move:
+        # Print the initial hands at the start of the game
+        if start:
+            if verbose:
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__} ({'Landlord' if player.landlord else 'Peasant'})")
+            else:
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+                
+        # Print the most recent move and new hands
+        else:
+            if verbose:
+                print(f"Choice: [{freq_array_to_card_str(prev_choice)}], pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {player.hand} {sum(player.hand)} ({'Landlord' if player.landlord else 'Peasant'})")
+            else:
+                print(f"Choice: [{freq_array_to_card_str(prev_choice)}], pattern: {pattern}\n")
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+                    
+        print(f"All remaining: {freq_array_to_card_str(all_remaining)}")
+        print()
+    else:
+        print(f"Skip. Skip count: {skip_count}\n")
+    
+    # Announce the new current player
+    print(f"Current player: {curr_player}\n")

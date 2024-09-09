@@ -24,6 +24,8 @@ class GameEnv:
         self.mode = mode
         self.moveset = moveset
         self.game_history = []      # Record the game history for training
+        self.action_history = []    # Record the action history for training
+        self.all_remaining = None   # Frequency of all cards left in play
         self.landlord_idx = None    # Index of the landlord player
         self.curr_player = 0        # Index of the current player
         
@@ -143,8 +145,10 @@ class GameEnv:
         """
         # Reset the game history
         self.game_history = []
+        self.action_history = []
         self.landlord_idx = None
         self.curr_player = 0
+        self.all_remaining = np.array(CARD_FREQ) * self.num_decks    # Frequency of all cards left in play
             
         print(f"New {self.mode} game with {self.num_players} players and {self.num_decks} deck(s) of cards.")
         
@@ -159,47 +163,14 @@ class GameEnv:
         """
         # Reset temporary variables
         self.players[self.curr_player].free = True
-        contains_pattern = True
+        valid_move = True
         pattern = None
         prev_choice = None
         leading_rank = None
         remainder = sum(self.players[self.curr_player].hand)
         skip_count = 0
-        
-        all_remaining = np.array(CARD_FREQ) * self.num_decks    # All cards left in play
-        
-        # Print the current state of the game
-        def print_game(start=False):
-            if contains_pattern:
-                # Print the initial hands at the start of the game
-                if start:
-                    if verbose:
-                        for idx, player in enumerate(self.players):
-                            print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__} ({'Landlord' if player.landlord else 'Peasant'})")
-                    else:
-                        for idx, player in enumerate(self.players):
-                            print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
-                        
-                # Print the most recent move and new hands
-                else:
-                    if verbose:
-                        print(f"Choice: [{utils.freq_array_to_card_str(prev_choice)}], pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
-                        for idx, player in enumerate(self.players):
-                            print(f"Player {idx}: {player.hand} {sum(player.hand)} ({'Landlord' if player.landlord else 'Peasant'})")
-                    else:
-                        print(f"Choice: [{utils.freq_array_to_card_str(prev_choice)}], pattern: {pattern}\n")
-                        for idx, player in enumerate(self.players):
-                            print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
-                            
-                print(f"All remaining: {utils.freq_array_to_card_str(all_remaining)}")
-                print()
-            else:
-                print(f"Skip. Skip count: {skip_count}\n")
-            
-            # Announce the new current player
-            print(f"Current player: {self.curr_player}\n")
                 
-        print_game(start=True)
+        utils.print_game(valid_move, pattern, prev_choice, leading_rank, self.all_remaining, skip_count, self.curr_player, self.players, start=True, verbose=False)
         
         # Players play in order until the game is over (empty hand)
         while True:
@@ -212,70 +183,80 @@ class GameEnv:
                 skip_count = 0
             
             # Player makes a move
-            contains_pattern, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
+            valid_move, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
             
             # Update the remaining cards in play
-            if contains_pattern:
-                all_remaining -= prev_choice
+            if valid_move:
+                self.all_remaining -= prev_choice
                 skip_count = 0
             # If the player didn't make a move, increment the skip count
             else:
                 skip_count += 1
             
             # Record the player action and new state
-            # TODO: Change how the history is recorded
-            action = {"player": self.curr_player,
-                      "contains_pattern": contains_pattern,
-                      "pattern": pattern,
-                      "choice": prev_choice,
-                      "leading_rank": leading_rank}
-            new_state = self.get_state()
-            reward = self.calculate_reward(contains_pattern, remainder)
-            self.game_history.append({"state": curr_state, 
-                                 "action": action, 
-                                 "new_state": new_state, 
-                                 "reward": reward})
+            action = {"player":         self.curr_player,
+                      "valid_move":     valid_move,
+                      "pattern":        pattern,
+                      "choice":         prev_choice.tolist(),
+                      "leading_rank":   leading_rank}
+            self.action_history.append(action)
+            new_state = self.get_state()    # New state's action history includes the current action
+            reward = self.calculate_reward(valid_move, remainder)
+            self.game_history.append({"state":      curr_state, 
+                                     "action":      action, 
+                                     "new_state":   new_state, 
+                                     "reward":      reward})
             
             # Check if the game is over
             if remainder <= 0:
-                # TODO: Record the game over in game history
                 break
             
             # Else, continue to the next player
             self.curr_player = (self.curr_player + 1) % self.num_players
-            print_game(start=False)
             
-        # TODO: Update reward for all players based on game outcome
+            utils.print_game(valid_move, pattern, prev_choice, leading_rank, self.all_remaining, skip_count, self.curr_player, self.players, start=False, verbose=False)
+            
+        # TODO: Record the game over in game history and update reward for all players based on game outcome
         if self.mode == "indv":
             print(f"Game over. Player {self.curr_player} wins!")
         else:
             print(f"Game over. {'Landlord' if self.curr_player == self.landlord_idx else 'Peasants'} win!")
         return self.game_history
         
+    
     def get_state(self):
         """
         Record the current state of the game.
         """
-        # TODO: Change the state representation into what the player can actually see
-        return {"curr_player": self.curr_player,
-                "hands": [player.hand.copy() for player in self.players],
-                "free": self.players[self.curr_player].free}
+        state = {
+            "curr_player":      self.curr_player,
+            "self_free":        self.players[self.curr_player].free,
+            "is_landlord":      self.players[self.curr_player].landlord,
+            "hand":             self.players[self.curr_player].hand.tolist(),
+            "num_remaining":    int(sum(self.players[self.curr_player].hand)),
+            "all_remaining":    self.all_remaining.tolist(),    # Convert to list for JSON
+            "opp_remaining":    (self.all_remaining - self.players[self.curr_player].hand).tolist(),
+            "action_history":   self.action_history.copy()
+        }
+        return state
 
-    def calculate_reward(self, contains_pattern, remainder):
+
+    def calculate_reward(self, valid_move, remainder):
+        # TODO: Improve reward calculation
         """
         Calculate the reward for a particular action.
         
         params:
-            contains_pattern (bool):    Whether the player made a valid move
-            remainder        (int):     Number of cards remaining in the player's hand
+            valid_move (bool):    Whether the player made a valid move
+            remainder  (int):     Number of cards remaining in the player's hand
         """
-        # TODO: Change the reward calculation
         if remainder == 0:
             return 10   # Win
-        elif contains_pattern:
+        elif valid_move:
             return 0.1  # Successful move
         else:
             return -0.1 # Skipped turn
+        
         
     def replay(self, history):
         """

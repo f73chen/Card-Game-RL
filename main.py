@@ -1,7 +1,7 @@
 import numpy as np
 import random
-import pickle
 import torch
+import json
 
 import utils
 from consts import *
@@ -10,13 +10,12 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 # from train import RNN_DQN
 
 
-env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[UserPlayer()])
+env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
 env.reset()
 history = env.play_game(verbose=False)
 
-# game_name = "user_game_0.pkl"
-# pickle.dump(history, open(game_name, "wb"))
-# history = pickle.load(open(game_name, "rb"))
+game_name = "data/user_game.json"
+json.dump(history, open(game_name, "w"))
 # env.replay(history)
 
 # # Load the model for inference
