@@ -10,13 +10,17 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 # from train import RNN_DQN
 
 
+# Play and store the game
 env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
 env.reset()
 history = env.play_game(verbose=False)
 
 game_name = "data/user_game.json"
 json.dump(history, open(game_name, "w"))
-# env.replay(history)
+
+# Load and replay the game
+history = json.load(open("data/user_game.json", "r"))
+env.replay(history)
 
 # # Load the model for inference
 # rnn_dqn = RNN_DQN(state_size, action_size)

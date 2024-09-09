@@ -267,11 +267,10 @@ class GameEnv:
         """
         # TODO: Change how the history is replayed
         for step in history:
-            print(f"Player {step['action']['player']} action:")
-            print(f"State: {step['state']}")
-            print(f"Action: {step['action']}")
-            print(f"New State: {step['new_state']}")
-            print(f"Reward: {step['reward']}")
+            print(f"Player {step['action']['player']} makes a move.")
+            print(f"Pattern: {step['action']['pattern']}")
+            print(f"Choice: {utils.freq_array_to_card_str(step['action']['choice'])}")
+            print(f"Remaining cards in hand: {step['new_state']['num_remaining']}")
             print()
             
             
