@@ -45,6 +45,12 @@ CARDS_PER_PLAYER = {"indv": {4: {1: [14, 14, 13, 13],
                     "lord": {3: {1: ([17, 17, 17], 3),    # 17 cards each and 3 to the landlord
                                  2: ([34, 34, 34], 6)}}}  # 34 cards each and 6 to the landlord
 
+# RL reward rates
+REWARDS = {"win": 10,
+           "loss": -10,
+           "valid": 0.1,
+           "pass": -0.1}
+
 # Simplified moveset
 MOVESET_1 = ["1x5",
              

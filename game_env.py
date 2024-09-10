@@ -201,7 +201,7 @@ class GameEnv:
                       "leading_rank":   leading_rank}
             self.action_history.append(action)
             new_state = self.get_state()    # New state's action history includes the current action
-            reward = self.calculate_reward(valid_move, remainder)
+            reward = self.calculate_reward(valid_move, sum(prev_choice), remainder)
             self.game_history.append({"state":      curr_state, 
                                      "action":      action, 
                                      "new_state":   new_state, 
@@ -216,13 +216,50 @@ class GameEnv:
             
             utils.print_game(valid_move, pattern, prev_choice, leading_rank, self.all_remaining, skip_count, self.curr_player, self.players, start=False, verbose=False)
             
-        # TODO: Record the game over in game history and update reward for all players based on game outcome
+        # Announce the game result and update rewards for all players
         if self.mode == "indv":
             print(f"Game over. Player {self.curr_player} wins!")
+            self.adjust_end_rewards(winners=[self.curr_player])
         else:
-            print(f"Game over. {'Landlord' if self.curr_player == self.landlord_idx else 'Peasants'} win!")
+            landlord_wins = self.curr_player == self.landlord_idx
+            if landlord_wins:
+                print("Game over. Landlord wins!")
+                self.adjust_end_rewards(winners=[self.landlord_idx])
+            else:
+                print("Game over. Peasants win!")
+                self.adjust_end_rewards(winners=[p for p in range(self.num_players) if p != self.landlord_idx])
         return self.game_history
+    
+    
+    def adjust_end_rewards(self, winners):
+        """
+        Update player rewards after the game ends.
+        For example, in a 3-player game, the last 3 records in the game history are updated.
+        Landlord rewards are multiplied by the number of peasants.
         
+        params:
+            winners (list): List of player indices who won the game
+        """
+        if self.mode == "indv":
+            for p in range(self.num_players):
+                updated_entry = self.game_history[-p-1]
+                curr_player = updated_entry["state"]["curr_player"]
+                if curr_player in winners:
+                    updated_entry["reward"] = REWARDS["win"]
+                else:
+                    updated_entry["reward"] = REWARDS["loss"]
+                self.game_history[-p-1] = updated_entry
+        else:
+            for p in range(self.num_players):
+                updated_entry = self.game_history[-p-1]
+                curr_player = updated_entry["state"]["curr_player"]
+                if curr_player in winners:
+                    updated_entry["reward"] = REWARDS["win"] * (self.num_players - len(winners))
+                else:
+                    updated_entry["reward"] = REWARDS["loss"] * len(winners)
+                self.game_history[-p-1] = updated_entry
+                
+            
     
     def get_state(self):
         """
@@ -241,21 +278,21 @@ class GameEnv:
         return state
 
 
-    def calculate_reward(self, valid_move, remainder):
-        # TODO: Improve reward calculation
+    def calculate_reward(self, valid_move, num_cards_played, remainder):
         """
         Calculate the reward for a particular action.
+        Note: Losses are calculated only after the game ends.
         
         params:
             valid_move (bool):    Whether the player made a valid move
             remainder  (int):     Number of cards remaining in the player's hand
         """
         if remainder == 0:
-            return 10   # Win
+            return REWARDS["win"]
         elif valid_move:
-            return 0.1  # Successful move
+            return REWARDS["valid"] * num_cards_played
         else:
-            return -0.1 # Skipped turn
+            return REWARDS["pass"]
         
         
     def replay(self, history):
@@ -265,7 +302,6 @@ class GameEnv:
         params:
             history (list): List of dictionaries containing state, action, new state, and reward
         """
-        # TODO: Change how the history is replayed
         for step in history:
             print(f"Player {step['action']['player']} makes a move.")
             print(f"Pattern: {step['action']['pattern']}")

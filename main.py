@@ -19,8 +19,8 @@ game_name = "data/user_game.json"
 json.dump(history, open(game_name, "w"))
 
 # Load and replay the game
-history = json.load(open("data/user_game.json", "r"))
-env.replay(history)
+# history = json.load(open("data/user_game.json", "r"))
+# env.replay(history)
 
 # # Load the model for inference
 # rnn_dqn = RNN_DQN(state_size, action_size)
