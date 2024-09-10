@@ -203,9 +203,10 @@ class GameEnv:
             new_state = self.get_state()    # New state's action history includes the current action
             reward = self.calculate_reward(valid_move, sum(prev_choice), remainder)
             self.game_history.append({"state":      curr_state, 
-                                     "action":      action, 
-                                     "new_state":   new_state, 
-                                     "reward":      reward})
+                                      "action":      action, 
+                                      "new_state":   new_state, 
+                                      "reward":      reward,
+                                      "done":        False})
             
             # Check if the game is over
             if remainder <= 0:
@@ -248,6 +249,7 @@ class GameEnv:
                     updated_entry["reward"] = REWARDS["win"]
                 else:
                     updated_entry["reward"] = REWARDS["loss"]
+                updated_entry["done"] = True
                 self.game_history[-p-1] = updated_entry
         else:
             for p in range(self.num_players):
@@ -257,6 +259,7 @@ class GameEnv:
                     updated_entry["reward"] = REWARDS["win"] * (self.num_players - len(winners))
                 else:
                     updated_entry["reward"] = REWARDS["loss"] * len(winners)
+                updated_entry["done"] = True
                 self.game_history[-p-1] = updated_entry
                 
             
