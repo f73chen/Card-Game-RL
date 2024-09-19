@@ -25,7 +25,6 @@ class GameEnv:
         self.moveset = moveset
         self.game_history = []      # Record the game history for training
         self.action_history = []    # Record the action history for training
-        self.all_remaining = None   # Frequency of all cards left in play
         self.landlord_idx = None    # Index of the landlord player
         self.curr_player = 0        # Index of the current player
         
@@ -148,7 +147,6 @@ class GameEnv:
         self.action_history = []
         self.landlord_idx = None
         self.curr_player = 0
-        self.all_remaining = np.array(CARD_FREQ) * self.num_decks    # Frequency of all cards left in play
             
         print(f"New {self.mode} game with {self.num_players} players and {self.num_decks} deck(s) of cards.")
         
@@ -167,15 +165,22 @@ class GameEnv:
         pattern = None
         prev_choice = None
         leading_rank = None
-        remainder = sum(self.players[self.curr_player].hand)
         skip_count = 0
+        
+        # Track public information for state recording
+        num_remaining = np.array([sum(self.players[p].hand) for p in range(self.num_players)])
+        cards_played = np.zeros((self.num_players, NUM_RANKS))
+        cards_remaining = np.array(CARD_FREQ) * self.num_decks
+        bombs_played = np.zeros(self.num_players)
+        bomb_types_played = [set() for _ in range(self.num_players)]
+        skips = np.zeros(self.num_players)
                 
-        utils.print_game(valid_move, pattern, prev_choice, leading_rank, self.all_remaining, skip_count, self.curr_player, self.players, start=True, verbose=False)
+        utils.print_game(valid_move, pattern, prev_choice, leading_rank, cards_remaining, skip_count, self.curr_player, self.players, start=True, verbose=False)
         
         # Players play in order until the game is over (empty hand)
         while True:
             # Record the current state
-            curr_state = self.get_state()
+            curr_state = self.get_state(num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips)
             
             # If all other players skip their turn, the current player is free to move
             if skip_count == self.num_players - 1:
@@ -184,13 +189,20 @@ class GameEnv:
             
             # Player makes a move
             valid_move, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
+            num_remaining[self.curr_player] = remainder   # Update the number of cards remaining in the player's hand
             
             # Update the remaining cards in play
             if valid_move:
-                self.all_remaining -= prev_choice
+                cards_played[self.curr_player] += prev_choice
+                cards_remaining -= prev_choice
                 skip_count = 0
+                if pattern in BOMB_SET:
+                    bombs_played[self.curr_player] += 1
+                    bomb_types_played[self.curr_player].add(pattern)
+                    
             # If the player didn't make a move, increment the skip count
             else:
+                skips[self.curr_player] += 1
                 skip_count += 1
             
             # Record the player action and new state
@@ -200,7 +212,7 @@ class GameEnv:
                       "choice":         prev_choice.tolist(),
                       "leading_rank":   leading_rank}
             self.action_history.append(action)
-            new_state = self.get_state()    # New state's action history includes the current action
+            new_state = self.get_state(num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips)    # Note: New state's action history includes the current action
             reward = self.calculate_reward(valid_move, sum(prev_choice), remainder)
             self.game_history.append({"state":      curr_state, 
                                       "action":      action, 
@@ -215,7 +227,7 @@ class GameEnv:
             # Else, continue to the next player
             self.curr_player = (self.curr_player + 1) % self.num_players
             
-            utils.print_game(valid_move, pattern, prev_choice, leading_rank, self.all_remaining, skip_count, self.curr_player, self.players, start=False, verbose=False)
+            utils.print_game(valid_move, pattern, prev_choice, leading_rank, cards_remaining, skip_count, self.curr_player, self.players, start=False, verbose=False)
             
         # Announce the game result and update rewards for all players
         if self.mode == "indv":
@@ -244,7 +256,7 @@ class GameEnv:
         if self.mode == "indv":
             for p in range(self.num_players):
                 updated_entry = self.game_history[-p-1]
-                curr_player = updated_entry["state"]["curr_player"]
+                curr_player = updated_entry["state"]["self"]["id"]
                 if curr_player in winners:
                     updated_entry["reward"] = REWARDS["win"]
                 else:
@@ -254,7 +266,7 @@ class GameEnv:
         else:
             for p in range(self.num_players):
                 updated_entry = self.game_history[-p-1]
-                curr_player = updated_entry["state"]["curr_player"]
+                curr_player = updated_entry["state"]["self"]["id"]
                 if curr_player in winners:
                     updated_entry["reward"] = REWARDS["win"] * (self.num_players - len(winners))
                 else:
@@ -263,21 +275,38 @@ class GameEnv:
                 self.game_history[-p-1] = updated_entry
                 
             
-    
-    def get_state(self):
+    # TODO: Check JSON for accuracy, update action recording?, train
+    def get_state(self, num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips):
         """
         Record the current state of the game.
         """
-        state = {
-            "curr_player":      self.curr_player,
-            "self_free":        self.players[self.curr_player].free,
-            "is_landlord":      self.players[self.curr_player].landlord,
-            "hand":             self.players[self.curr_player].hand.tolist(),
-            "num_remaining":    int(sum(self.players[self.curr_player].hand)),
-            "all_remaining":    self.all_remaining.tolist(),    # Convert to list for JSON
-            "opp_remaining":    (self.all_remaining - self.players[self.curr_player].hand).tolist(),
-            "action_history":   self.action_history.copy()
-        }
+        player_id = self.curr_player
+        opponent_ids = [p for p in range(self.num_players) if p != player_id]
+        
+        state = {"self": {"id":           player_id,
+                          "free":         self.players[player_id].free,
+                          "landlord":     self.players[player_id].landlord,
+                          "hand":         self.players[player_id].hand.tolist(),
+                          "num_remaining":int(num_remaining[player_id]),
+                          "cards_played": cards_played[player_id].tolist(),
+                          "bombs_played": int(bombs_played[player_id]),
+                          "bomb_types":   list(bomb_types_played[player_id]),
+                          "skips":        int(skips[player_id])},
+                 
+                 "opponents": {"id":             opponent_ids,
+                               "landlord_id":    self.landlord_idx,
+                               "num_remaining":  num_remaining[opponent_ids].tolist(),
+                               "cards_played":   cards_played[opponent_ids].tolist(),
+                               "all_cards_played": np.sum(cards_played[opponent_ids], axis=0).tolist(),
+                               "all_cards_remaining": cards_remaining.tolist(),
+                               "opp_cards_remaining": (cards_remaining - self.players[player_id].hand).tolist(),
+                               "bombs_played":   bombs_played[opponent_ids].tolist(),
+                               "bomb_types":     [list(bomb_types_played[p]) for p in opponent_ids],
+                               "skips":          skips[opponent_ids].tolist(),
+                               "next_opponent":  (self.curr_player + 1) % self.num_players},
+            
+                 "action_history":   self.action_history.copy()}
+        
         return state
 
 
