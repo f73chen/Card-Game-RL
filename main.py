@@ -11,7 +11,7 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 
 
 # Play and store the game
-env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
+env = GameEnv(num_decks=2, num_players=3, mode="lord", players=[])
 env.reset()
 history = env.play_game(verbose=False)
 

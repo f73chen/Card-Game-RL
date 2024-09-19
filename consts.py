@@ -94,17 +94,17 @@ MOVESET_2 = ["1x5",     # 5 Consecutive Singles
              "2x13",    # 13 Consecutive Pairs
              
              "3+1",     # Triple + Single
-             "3x2+1",   # 2 Triples + 2 Singles
-             "3x3+1",   # 3 Triples + 3 Singles
-             "3x4+1",   # 4 Triples + 4 Singles
-             "3x5+1",   # 5 Triples + 5 Singles
-             "3x6+1",   # 6 Triples + 6 Singles
+             "3x2+1",   # 2 Consecutive Triples + 2 Singles
+             "3x3+1",   # 3 Consecutive Triples + 3 Singles
+             "3x4+1",   # 4 Consecutive Triples + 4 Singles
+             "3x5+1",   # 5 Consecutive Triples + 5 Singles
+             "3x6+1",   # 6 Consecutive Triples + 6 Singles
              
              "3+2",     # Triple + Pair
-             "3x2+2",   # 2 Triples + 2 Pairs
-             "3x3+2",   # 3 Triples + 3 Pairs
-             "3x4+2",   # 4 Triples + 4 Pairs
-             "3x5+2",   # 5 Triples + 5 Pairs
+             "3x2+2",   # 2 Consecutive Triples + 2 Pairs
+             "3x3+2",   # 3 Consecutive Triples + 3 Pairs
+             "3x4+2",   # 4 Consecutive Triples + 4 Pairs
+             "3x5+2",   # 5 Consecutive Triples + 5 Pairs
              
              "4+1",     # Quadruple + 2 Singles
              "4+2",     # Quadruple + 2 Pairs

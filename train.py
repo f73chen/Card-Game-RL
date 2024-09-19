@@ -1,116 +1,228 @@
-import numpy as np
-import random
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
+import numpy as np
+import random
 from collections import deque
 
-from main import GameEnv
-
-# TODO: Rewrite this whole page --> LSTM-DQN
-
-# Define an enhanced LSTM-DQN model with embedding layers and attention mechanism
-class LSTM_DQN(nn.Module):
-    def __init__(self, state_size, action_size, hidden_size=128, num_layers=1, embedding_dim=64):
-        super(LSTM_DQN, self).__init__()
-        # Embeddings for moveset and card ranks
-        self.moveset_embedding = nn.Embedding(num_embeddings=50, embedding_dim=embedding_dim)  # Assuming max 50 move patterns
-        self.rank_embedding = nn.Embedding(num_embeddings=15, embedding_dim=embedding_dim)  # 15 possible ranks
-
-        # LSTM layers
-        self.lstm = nn.LSTM(state_size + 2 * embedding_dim, hidden_size, num_layers, batch_first=True)
-
-        # Attention mechanism
-        self.attention = nn.MultiheadAttention(embed_dim=hidden_size, num_heads=4, batch_first=True)
-        
-        # Fully connected layer for final action selection
-        self.fc = nn.Linear(hidden_size, action_size)
-
-    def forward(self, x, moves, ranks):
-        # Embedding the moveset and ranks
-        moves_embedded = self.moveset_embedding(moves)
-        ranks_embedded = self.rank_embedding(ranks)
-
-        # Concatenating state with embeddings
-        x = torch.cat((x, moves_embedded, ranks_embedded), dim=-1)
-
-        # Passing through LSTM
-        h0 = torch.zeros(1, x.size(0), 128).to(x.device)
-        c0 = torch.zeros(1, x.size(0), 128).to(x.device)
-        out, _ = self.lstm(x, (h0, c0))
-
-        # Applying attention mechanism
-        attn_output, _ = self.attention(out, out, out)
-
-        # Passing through fully connected layer
-        out = self.fc(attn_output[:, -1, :])
-        return out
+from game_env import GameEnv
 
 class ReplayBuffer:
-    def __init__(self, buffer_size):
-        self.buffer = deque(maxlen=buffer_size)
+    def __init__(self, capacity):
+        self.capacity = capacity
+        self.buffer = []
+        self.position = 0
 
-    def add(self, experience):
-        self.buffer.append(experience)
+    def push(self, state, action, reward, next_state, done):
+        """Saves a transition."""
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(None)
+        self.buffer[self.position] = (state, action, reward, next_state, done)
+        self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
-        return random.sample(self.buffer, batch_size)
+        """Samples a batch of transitions."""
+        batch = random.sample(self.buffer, batch_size)
+        state, action, reward, next_state, done = zip(*batch)
+        return state, action, reward, next_state, done
 
     def __len__(self):
         return len(self.buffer)
 
-def train_lstm_dqn(env, num_episodes, batch_size, gamma, epsilon_start, epsilon_end, epsilon_decay):
-    state_size = env.state_size
-    action_size = env.action_size
-    lstm_dqn = LSTM_DQN(state_size, action_size)
-    target_lstm_dqn = LSTM_DQN(state_size, action_size)
-    target_lstm_dqn.load_state_dict(lstm_dqn.state_dict())
-    optimizer = optim.Adam(lstm_dqn.parameters())
-    replay_buffer = ReplayBuffer(buffer_size=10000)
-    epsilon = epsilon_start
 
-    for episode in range(num_episodes):
-        state = env.reset()
-        done = False
-        while not done:
-            if random.random() < epsilon:
-                action = random.choice(range(action_size))
-            else:
-                with torch.no_grad():
-                    action = torch.argmax(lstm_dqn(torch.tensor(state, dtype=torch.float32).unsqueeze(0))).item()
+class LSTMDQNAgent(nn.Module):
+    def __init__(self, num_players, num_patterns, num_ranks, lstm_hidden_size=128, fc_hidden_size=256, num_actions=100):
+        super(LSTMDQNAgent, self).__init__()
 
+        # Embedding layers for player ID, move patterns, and card ranks
+        self.player_embedding = nn.Embedding(num_players, 8)
+        self.pattern_embedding = nn.Embedding(num_patterns, 64)
+        self.rank_embedding = nn.Embedding(num_ranks, 64)
+
+        # LSTM layer
+        self.lstm = nn.LSTM(input_size=8 + 64 + 64, hidden_size=lstm_hidden_size, batch_first=True)
+
+        # Fully connected layers
+        self.fc1 = nn.Linear(lstm_hidden_size, fc_hidden_size)
+        self.fc2 = nn.Linear(fc_hidden_size, num_actions)
+
+    def forward(self, player_id, move_pattern, card_rank, move_history):
+        """
+        Forward pass of the LSTM-DQN agent.
+        
+        Params:
+            player_id: Tensor of player IDs for the current move (batch_size,)
+            move_pattern: Tensor of move patterns (batch_size,)
+            card_rank: Tensor of card ranks (batch_size,)
+            move_history: Sliding window of past 10 moves (batch_size, sequence_length, input_size)
+        
+        Returns:
+            Q-values for each action in the current state (batch_size, num_actions)
+        """
+        # Embedding lookups
+        player_emb = self.player_embedding(player_id)  # (batch_size, 8)
+        pattern_emb = self.pattern_embedding(move_pattern)  # (batch_size, 64)
+        rank_emb = self.rank_embedding(card_rank)  # (batch_size, 64)
+
+        # Concatenate the embeddings to form a single move representation
+        move_emb = torch.cat([player_emb, pattern_emb, rank_emb], dim=-1)  # (batch_size, 136)
+
+        # Pass the move history through the LSTM layer
+        lstm_out, _ = self.lstm(move_history)  # (batch_size, sequence_length, lstm_hidden_size)
+        lstm_last_hidden = lstm_out[:, -1, :]  # (batch_size, lstm_hidden_size)
+
+        # Fully connected layers to predict Q-values
+        x = torch.relu(self.fc1(lstm_last_hidden))  # (batch_size, fc_hidden_size)
+        q_values = self.fc2(x)  # (batch_size, num_actions)
+
+        return q_values
+
+
+def train(agent, target_agent, replay_buffer, optimizer, batch_size, gamma, device):
+    """
+    Trains the LSTM-DQN agent using a batch of transitions from the replay buffer.
+
+    Params:
+    - agent: The LSTM-DQN agent (current Q-network).
+    - target_agent: The target Q-network (for stable updates).
+    - replay_buffer: The replay buffer containing past transitions.
+    - optimizer: Optimizer for updating the Q-network.
+    - batch_size: The number of transitions to sample for each training step.
+    - gamma: Discount factor for future rewards.
+    - device: Device to perform computations on (e.g., 'cpu' or 'cuda').
+
+    Returns:
+    - loss: The computed loss for the batch.
+    """
+    
+    # Ensure there's enough data in the buffer to sample a full batch
+    if len(replay_buffer) < batch_size:
+        return None
+
+    # Sample a batch from the replay buffer
+    state, action, reward, next_state, done = replay_buffer.sample(batch_size)
+
+    # Convert to tensors and move to the appropriate device (e.g., GPU)
+    state = torch.tensor(np.array(state), dtype=torch.float32).to(device)
+    action = torch.tensor(action, dtype=torch.long).to(device)
+    reward = torch.tensor(reward, dtype=torch.float32).to(device)
+    next_state = torch.tensor(np.array(next_state), dtype=torch.float32).to(device)
+    done = torch.tensor(done, dtype=torch.float32).to(device)
+
+    # Forward pass: get current Q-values for the batch of states
+    q_values = agent(state)  # (batch_size, num_actions)
+    
+    # Gather the Q-values for the actions that were actually taken
+    q_value = q_values.gather(1, action.unsqueeze(1)).squeeze(1)  # (batch_size,)
+    
+    # Get the next state Q-values from the target network
+    with torch.no_grad():
+        next_q_values = target_agent(next_state)
+        next_q_value = next_q_values.max(1)[0]  # Max Q-value for the next state
+
+    # Compute the target Q-value
+    target_q_value = reward + (1 - done) * gamma * next_q_value
+
+    # Compute the loss
+    loss = F.mse_loss(q_value, target_q_value)
+
+    # Backpropagation
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    return loss.item()
+
+
+# Hyperparameters
+BATCH_SIZE = 32
+GAMMA = 0.99
+LR = 1e-4
+EPSILON_START = 1.0
+EPSILON_END = 0.1
+EPSILON_DECAY = 5000  # Steps over which epsilon decays
+TARGET_UPDATE_FREQUENCY = 1000  # How often to update the target network
+REPLAY_BUFFER_CAPACITY = 10000
+MAX_EPISODES = 10000
+MAX_STEPS_PER_EPISODE = 500
+
+# Initialize Game Environment, Agent, Target Agent, Replay Buffer, Optimizer
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Assuming `GameEnv` is the environment class you've created
+env = GameEnv()
+
+# Initialize the DQN and the target DQN agents
+agent = LSTMDQNAgent(num_players=3, num_patterns=20, num_ranks=15, num_actions=100).to(device)
+target_agent = LSTMDQNAgent(num_players=3, num_patterns=20, num_ranks=15, num_actions=100).to(device)
+
+# Copy the weights of the main agent to the target agent
+target_agent.load_state_dict(agent.state_dict())
+
+# Optimizer
+optimizer = optim.Adam(agent.parameters(), lr=LR)
+
+# Replay buffer
+replay_buffer = ReplayBuffer(REPLAY_BUFFER_CAPACITY)
+
+# Exploration scheduling (epsilon-greedy)
+epsilon = EPSILON_START
+epsilon_decay = (EPSILON_START - EPSILON_END) / EPSILON_DECAY
+
+
+def select_action(state, epsilon):
+    """Select an action using epsilon-greedy policy."""
+    if random.random() < epsilon:
+        # Random action (exploration)
+        return random.randint(0, agent.fc2.out_features - 1)
+    else:
+        # Select action with the highest Q-value (exploitation)
+        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+        with torch.no_grad():
+            q_values = agent(state)
+        return q_values.argmax().item()
+
+
+def generate_new_samples():
+    """Generate new samples by interacting with the environment."""
+    for episode in range(MAX_EPISODES):
+        state = env.reset()  # Reset the environment to get the initial state
+        episode_reward = 0
+
+        for step in range(MAX_STEPS_PER_EPISODE):
+            # Select action based on epsilon-greedy policy
+            action = select_action(state, epsilon)
+
+            # Take action in the environment and observe the result
             next_state, reward, done, _ = env.step(action)
-            replay_buffer.add((state, action, reward, next_state, done))
+
+            # Store the transition in the replay buffer
+            replay_buffer.push(state, action, reward, next_state, done)
+
+            # Update the current state
             state = next_state
+            episode_reward += reward
 
-            if len(replay_buffer) >= batch_size:
-                batch = replay_buffer.sample(batch_size)
-                states, actions, rewards, next_states, dones = zip(*batch)
-                states = torch.tensor(states, dtype=torch.float32)
-                actions = torch.tensor(actions, dtype=torch.int64)
-                rewards = torch.tensor(rewards, dtype=torch.float32)
-                next_states = torch.tensor(next_states, dtype=torch.float32)
-                dones = torch.tensor(dones, dtype=torch.float32)
+            # If the episode is done, break the loop
+            if done:
+                break
 
-                q_values = lstm_dqn(states).gather(1, actions.unsqueeze(1)).squeeze()
-                next_q_values = target_lstm_dqn(next_states).max(1)[0]
-                target_q_values = rewards + (gamma * next_q_values * (1 - dones))
+        # After each episode, decay epsilon
+        global epsilon
+        epsilon = max(EPSILON_END, epsilon - epsilon_decay)
 
-                loss = nn.MSELoss()(q_values, target_q_values)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+        # Train the agent after every episode
+        if len(replay_buffer) >= BATCH_SIZE:
+            train(agent, target_agent, replay_buffer, optimizer, BATCH_SIZE, GAMMA, device)
 
-        if episode % 10 == 0:
-            target_lstm_dqn.load_state_dict(lstm_dqn.state_dict())
+        # Update the target network every TARGET_UPDATE_FREQUENCY steps
+        if episode % TARGET_UPDATE_FREQUENCY == 0:
+            target_agent.load_state_dict(agent.state_dict())
 
-        epsilon = max(epsilon_end, epsilon_decay * epsilon)
+        print(f"Episode {episode}, Total Reward: {episode_reward}, Epsilon: {epsilon:.4f}")
 
-    return lstm_dqn
 
-# Example usage:
-env = GameEnv(num_decks=1, num_players=3, mode="lord", players=[])
-trained_lstm_dqn = train_lstm_dqn(env, num_episodes=1000, batch_size=64, gamma=0.99, epsilon_start=1.0, epsilon_end=0.1, epsilon_decay=0.995)
+# Main training loop
+generate_new_samples()
 
-# After training
-torch.save(trained_lstm_dqn.state_dict(), 'lstm_dqn_model.pth')

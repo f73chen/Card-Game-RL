@@ -171,9 +171,9 @@ class GameEnv:
         num_remaining = np.array([sum(self.players[p].hand) for p in range(self.num_players)])
         cards_played = np.zeros((self.num_players, NUM_RANKS))
         cards_remaining = np.array(CARD_FREQ) * self.num_decks
-        bombs_played = np.zeros(self.num_players)
+        bombs_played = np.zeros(self.num_players).astype(int)
         bomb_types_played = [set() for _ in range(self.num_players)]
-        skips = np.zeros(self.num_players)
+        skips = np.zeros(self.num_players).astype(int)
                 
         utils.print_game(valid_move, pattern, prev_choice, leading_rank, cards_remaining, skip_count, self.curr_player, self.players, start=True, verbose=False)
         
@@ -275,7 +275,7 @@ class GameEnv:
                 self.game_history[-p-1] = updated_entry
                 
             
-    # TODO: Check JSON for accuracy, update action recording?, train
+
     def get_state(self, num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips):
         """
         Record the current state of the game.
@@ -293,17 +293,16 @@ class GameEnv:
                           "bomb_types":   list(bomb_types_played[player_id]),
                           "skips":        int(skips[player_id])},
                  
-                 "opponents": {"id":             opponent_ids,
-                               "landlord_id":    self.landlord_idx,
-                               "num_remaining":  num_remaining[opponent_ids].tolist(),
-                               "cards_played":   cards_played[opponent_ids].tolist(),
-                               "all_cards_played": np.sum(cards_played[opponent_ids], axis=0).tolist(),
-                               "all_cards_remaining": cards_remaining.tolist(),
-                               "opp_cards_remaining": (cards_remaining - self.players[player_id].hand).tolist(),
-                               "bombs_played":   bombs_played[opponent_ids].tolist(),
-                               "bomb_types":     [list(bomb_types_played[p]) for p in opponent_ids],
-                               "skips":          skips[opponent_ids].tolist(),
-                               "next_opponent":  (self.curr_player + 1) % self.num_players},
+                 "opponents": {"id":                    opponent_ids,
+                               "landlord_id":           self.landlord_idx,
+                               "num_remaining":         num_remaining[opponent_ids].tolist(),
+                               "each_opp_cards_played": cards_played[opponent_ids].tolist(),
+                               "opp_cards_remaining":   (cards_remaining - self.players[player_id].hand).tolist(),
+                               "all_cards_remaining":   cards_remaining.tolist(),
+                               "bombs_played":          bombs_played[opponent_ids].tolist(),
+                               "bomb_types":            [list(bomb_types_played[p]) for p in opponent_ids],
+                               "skips":                 skips[opponent_ids].tolist(),
+                               "next_opponents":        [(self.curr_player + i) % self.num_players for i in range(1, self.num_players)]},
             
                  "action_history":   self.action_history.copy()}
         
