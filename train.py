@@ -226,3 +226,39 @@ def generate_new_samples():
 # Main training loop
 generate_new_samples()
 
+
+
+
+for episode in range(num_episodes):
+    state = env.reset()
+    
+    # Buffer for storing transitions during the episode
+    episode_transitions = []
+    done = False
+    while not done:
+        # Agent 1's turn
+        action_1 = agent.select_action(state['agent_1'])
+        next_state, reward_1, done, _ = env.step(action_1)
+
+        # Store transition (without immediately applying win/loss reward)
+        episode_transitions.append((state['agent_1'], action_1, reward_1, next_state['agent_1'], done))
+
+        # Move to the next player
+        state = next_state
+
+    # Once the game ends, finalize rewards based on final game result
+    if env.mode == "indv":
+        env.finalize_rewards([env.curr_player], episode_transitions)  # Single player win in individual mode
+    else:
+        landlord_wins = env.curr_player == env.landlord_idx
+        if landlord_wins:
+            env.finalize_rewards([env.landlord_idx], episode_transitions)  # Landlord wins
+        else:
+            env.finalize_rewards([p for p in range(env.num_players) if p != env.landlord_idx], episode_transitions)  # Peasants win
+
+    # Now update the agent for each transition in the episode
+    for transition in episode_transitions:
+        state, action, reward, next_state, done = transition
+        agent.update(state, action, reward, next_state, done)
+
+

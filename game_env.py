@@ -6,6 +6,7 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 
 
 class GameEnv:
+    # Overwritten
     def __init__(self, num_decks=1, num_players=4, players=[], mode="indv", moveset=MOVESET_1, seed=None):
         """
         Initialize variables that are constant across all games.
@@ -34,7 +35,7 @@ class GameEnv:
         # Adjust the number of players and decks to be consistent with the win mode
         self.adjust_player_count()
         
-        
+    # Will be inherited
     def adjust_player_count(self):
         """
         Adjust the number of players and decks based on the win mode.
@@ -65,8 +66,8 @@ class GameEnv:
             
         # Shuffle player order
         random.shuffle(self.players)
-        
-        
+           
+    # Will be inherited  
     def deal_cards(self, num_players, num_decks, mode):
         """
         Deal cards to the players based on the number of players and win mode.
@@ -137,7 +138,7 @@ class GameEnv:
             # Add the cards to the landlord's hand
             self.players[self.landlord_idx].hand += card_freq
 
-
+    # Overwritten
     def reset(self):
         """
         Initialize a fresh game instance.
@@ -153,22 +154,23 @@ class GameEnv:
         # Deal the regular hand, then the landlord hand
         print("Dealing cards...")
         self.deal_cards(self.num_players, self.num_decks, self.mode)
-        
-        
+
+    # Adapted into .step(action)
     def play_game(self, verbose=False):
         """
         Lets players move in order until the game is over.
         """
         # Reset temporary variables
-        self.players[self.curr_player].free = True
-        valid_move = True
+        self.players[self.curr_player].free = True  # TODO !!!
+        valid_move = True                           # TODO !!!
+        
+        skip_count = 0
         pattern = None
         prev_choice = None
         leading_rank = None
-        skip_count = 0
         
         # Track public information for state recording
-        num_remaining = np.array([sum(self.players[p].hand) for p in range(self.num_players)])
+        num_remaining = np.array([sum(player.hand) for player in self.players])
         cards_played = np.zeros((self.num_players, NUM_RANKS))
         cards_remaining = np.array(CARD_FREQ) * self.num_decks
         bombs_played = np.zeros(self.num_players).astype(int)
@@ -183,6 +185,7 @@ class GameEnv:
             curr_state = self.get_state(num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips)
             
             # If all other players skip their turn, the current player is free to move
+            # TODO !!!
             if skip_count == self.num_players - 1:
                 self.players[self.curr_player].free = True
                 skip_count = 0
@@ -196,29 +199,36 @@ class GameEnv:
                 cards_played[self.curr_player] += prev_choice
                 cards_remaining -= prev_choice
                 skip_count = 0
+                
                 if pattern in BOMB_SET:
                     bombs_played[self.curr_player] += 1
                     bomb_types_played[self.curr_player].add(pattern)
                     
             # If the player didn't make a move, increment the skip count
+            # TODO !!!
             else:
                 skips[self.curr_player] += 1
                 skip_count += 1
             
             # Record the player action and new state
-            action = {"player":         self.curr_player,
-                      "valid_move":     valid_move,
-                      "pattern":        pattern,
-                      "choice":         prev_choice.tolist(),
-                      "leading_rank":   leading_rank}
-            self.action_history.append(action)
+            action_record = {
+                "player":         self.curr_player,
+                "valid_move":     valid_move,
+                "pattern":        pattern,
+                "choice":         prev_choice.tolist(),
+                "leading_rank":   leading_rank
+            }
+            self.action_history.append(action_record)
             new_state = self.get_state(num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips)    # Note: New state's action history includes the current action
             reward = self.calculate_reward(valid_move, sum(prev_choice), remainder)
-            self.game_history.append({"state":      curr_state, 
-                                      "action":      action, 
-                                      "new_state":   new_state, 
-                                      "reward":      reward,
-                                      "done":        False})
+            
+            self.game_history.append({
+                "state": curr_state, 
+                "action": action_record, 
+                "new_state": new_state, 
+                "reward": reward,  # Immediate reward only
+                "done": False
+            })
             
             # Check if the game is over
             if remainder <= 0:
@@ -232,19 +242,19 @@ class GameEnv:
         # Announce the game result and update rewards for all players
         if self.mode == "indv":
             print(f"Game over. Player {self.curr_player} wins!")
-            self.adjust_end_rewards(winners=[self.curr_player])
+            self.finalize_rewards(winners=[self.curr_player])
         else:
             landlord_wins = self.curr_player == self.landlord_idx
             if landlord_wins:
                 print("Game over. Landlord wins!")
-                self.adjust_end_rewards(winners=[self.landlord_idx])
+                self.finalize_rewards(winners=[self.landlord_idx])
             else:
                 print("Game over. Peasants win!")
-                self.adjust_end_rewards(winners=[p for p in range(self.num_players) if p != self.landlord_idx])
+                self.finalize_rewards(winners=[p for p in range(self.num_players) if p != self.landlord_idx])
         return self.game_history
     
-    
-    def adjust_end_rewards(self, winners):
+    # Overwritten
+    def finalize_rewards(self, winners):
         """
         Update player rewards after the game ends.
         For example, in a 3-player game, the last 3 records in the game history are updated.
@@ -273,9 +283,8 @@ class GameEnv:
                     updated_entry["reward"] = REWARDS["loss"] * len(winners)
                 updated_entry["done"] = True
                 self.game_history[-p-1] = updated_entry
-                
-            
-
+        
+    # Will be inherited        
     def get_state(self, num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips):
         """
         Record the current state of the game.
@@ -308,7 +317,7 @@ class GameEnv:
         
         return state
 
-
+    # Will be inherited
     def calculate_reward(self, valid_move, num_cards_played, remainder):
         """
         Calculate the reward for a particular action.
@@ -325,7 +334,7 @@ class GameEnv:
         else:
             return REWARDS["pass"]
         
-        
+    # Not passed on
     def replay(self, history):
         """
         Re-enact the game based on the recorded history.
@@ -339,18 +348,143 @@ class GameEnv:
             print(f"Choice: {utils.freq_array_to_card_str(step['action']['choice'])}")
             print(f"Remaining cards in hand: {step['new_state']['num_remaining']}")
             print()
-            
-            
-    # TODO: Implement playing with RL model
-    # def play_with_model(self, model, num_games=1):
-    #     for _ in range(num_games):
-    #         state = self.reset()
-    #         done = False
-    #         while not done:
-    #             with torch.no_grad():
-    #                 action = torch.argmax(model(torch.tensor(state, dtype=torch.float32).unsqueeze(0))).item()
-    #             state, reward, done, _ = self.step(action)
-    #             # Add logic to handle NPCs and human players
-    #             # For NPCs, you can use predefined strategies or random actions
-    #             # For human players, you can prompt for input
- 
+
+class TrainGameEnv(GameEnv):
+    def __init__(self, num_decks=1, num_players=4, players=[], mode="indv", moveset=MOVESET_1, seed=None):
+        # Initialize variables that are constant across all games
+        # Also adjust player count to be consistent with the win mode
+        super().__init__(num_decks, num_players, players, mode, moveset, seed)
+
+        # Track public information for state recording
+        self.num_remaining = None
+        self.cards_played = None
+        self.cards_remaining = None
+        self.bombs_played = None
+        self.bomb_types_played = None
+        self.skips = None
+        self.skip_count = 0
+        self.pattern = None
+        self.prev_choice = None
+        self.leading_rank = None
+        
+    def reset(self):
+        """
+        Initialize a fresh game instance.
+        """
+        # Reset the game history
+        self.game_history = []
+        self.action_history = []
+        self.landlord_idx = None
+        self.curr_player = 0
+
+        # Reset game variables
+        self.num_remaining = np.array([0] * self.num_players)   # 0 for now
+        self.cards_played = np.zeros((self.num_players, NUM_RANKS))
+        self.cards_remaining = np.array(CARD_FREQ) * self.num_decks
+        self.bombs_played = np.zeros(self.num_players).astype(int)
+        self.bomb_types_played = [set() for _ in range(self.num_players)]
+        self.skips = np.zeros(self.num_players).astype(int)
+        
+        self.skip_count = 0
+        self.pattern = None
+        self.prev_choice = None
+        self.leading_rank = None
+
+        # Deal the regular hand, then the landlord hand
+        self.deal_cards(self.num_players, self.num_decks, self.mode)
+
+        # Update num_remaining after dealing the cards
+        self.num_remaining = np.array([sum(player.hand) for player in self.players])
+
+        return self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.skips)
+
+    def step(self, action):
+        """
+        Execute a single step in the game.
+        The current player makes a move, and the environment returns the new state, reward, and done flag.
+        
+        params:
+            action (dict): A dictionary containing move information (e.g., pattern, choice)
+        """
+        # Record the current state
+        curr_state = self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.skips)
+        
+        # Extract action details
+        # Note: remainder is not given but calculated after the fact
+        valid_move = action.get("valid_move", True)
+        pattern = action.get("pattern")
+        prev_choice = action.get("choice")
+        leading_rank = action.get("leading_rank", self.leading_rank)
+
+        # Update information based if the move was valid
+        if valid_move:
+            self.cards_played[self.curr_player] += prev_choice
+            self.cards_remaining -= prev_choice
+            self.skip_count = 0
+            remainder = sum(self.players[self.curr_player].hand) - sum(prev_choice)
+        
+            if pattern in BOMB_SET:
+                self.bombs_played[self.curr_player] += 1
+                self.bomb_types_played[self.curr_player].add(pattern)
+        else:
+            remainder = sum(self.players[self.curr_player].hand)
+            self.skips[self.curr_player] += 1
+            self.skip_count += 1
+
+        self.num_remaining[self.curr_player] = remainder
+
+        # Record the action and new state
+        action_record = {
+            "player": self.curr_player,
+            "valid_move": valid_move,
+            "pattern": pattern,
+            "choice": prev_choice,
+            "leading_rank": leading_rank
+        }
+        self.action_history.append(action_record)
+        new_state = self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.skips)
+        reward = self.calculate_reward(valid_move, sum(prev_choice), remainder)
+
+        # Check if the game is over
+        done = remainder <= 0
+
+        # Continue to the next player
+        self.curr_player = (self.curr_player + 1) % self.num_players
+
+        return new_state, reward, done, {}
+
+    def finalize_rewards(self, winners, episode_transitions):
+        """
+        Update the rewards for all players after the game ends, directly modifying episode_transitions.
+        
+        params:
+            winners (list): List of player indices who won the game
+            episode_transitions (list): The list of transitions for the episode that need final reward adjustments
+        """
+        if self.mode == "indv":
+            # Individual mode: assign win/loss rewards
+            for idx, transition in enumerate(episode_transitions):
+                state, action, reward, next_state, done = transition
+                curr_player = state["self"]["id"]
+                if curr_player in winners:
+                    updated_reward = REWARDS["win"]
+                else:
+                    updated_reward = REWARDS["loss"]
+                
+                # Update the transition in place with the final reward
+                episode_transitions[idx] = (state, action, updated_reward, next_state, done)
+        
+        else:
+            # Landlord mode: adjust rewards based on landlord/peasant outcome
+            for idx, transition in enumerate(episode_transitions):
+                state, action, reward, next_state, done = transition
+                curr_player = state["self"]["id"]
+                if curr_player in winners:
+                    # Peasants win, reward is multiplied by the number of peasants
+                    updated_reward = REWARDS["win"] * (self.num_players - len(winners))
+                else:
+                    # Landlord loses, loss is multiplied by the number of winners (peasants)
+                    updated_reward = REWARDS["loss"] * len(winners)
+                
+                # Update the transition in place with the final reward
+                episode_transitions[idx] = (state, action, updated_reward, next_state, done)
