@@ -185,7 +185,6 @@ class GameEnv:
             curr_state = self.get_state(num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, skips)
             
             # If all other players skip their turn, the current player is free to move
-            # TODO !!!
             if skip_count == self.num_players - 1:
                 self.players[self.curr_player].free = True
                 skip_count = 0
@@ -205,7 +204,6 @@ class GameEnv:
                     bomb_types_played[self.curr_player].add(pattern)
                     
             # If the player didn't make a move, increment the skip count
-            # TODO !!!
             else:
                 skips[self.curr_player] += 1
                 skip_count += 1
@@ -349,6 +347,7 @@ class GameEnv:
             print(f"Remaining cards in hand: {step['new_state']['num_remaining']}")
             print()
 
+
 class TrainGameEnv(GameEnv):
     def __init__(self, num_decks=1, num_players=4, players=[], mode="indv", moveset=MOVESET_1, seed=None):
         # Initialize variables that are constant across all games
@@ -391,10 +390,15 @@ class TrainGameEnv(GameEnv):
         self.leading_rank = None
 
         # Deal the regular hand, then the landlord hand
+        # TODO
         self.deal_cards(self.num_players, self.num_decks, self.mode)
 
         # Update num_remaining after dealing the cards
         self.num_remaining = np.array([sum(player.hand) for player in self.players])
+        
+        # After dealing cards, self.curr_player is the player to start
+        # Set the first player to be free to move
+        self.players[self.curr_player].free = True
 
         return self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.skips)
 
@@ -407,31 +411,38 @@ class TrainGameEnv(GameEnv):
             action (dict): A dictionary containing move information (e.g., pattern, choice)
         """
         # Record the current state
-        curr_state = self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.skips)
+        # curr_state = self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.skips)
         
         # Extract action details
         # Note: remainder is not given but calculated after the fact
-        valid_move = action.get("valid_move", True)
+        valid_move = action.get("valid_move")
         pattern = action.get("pattern")
         prev_choice = action.get("choice")
-        leading_rank = action.get("leading_rank", self.leading_rank)
+        leading_rank = action.get("leading_rank")
 
-        # Update information based if the move was valid
-        if valid_move:
-            self.cards_played[self.curr_player] += prev_choice
-            self.cards_remaining -= prev_choice
+        # Check if the current player is free to move
+        # TODO
+        if self.skip_count == self.num_players - 1:
+            self.players[self.curr_player].free = True
             self.skip_count = 0
-            remainder = sum(self.players[self.curr_player].hand) - sum(prev_choice)
+
+        # Update information based on if the move was valid
+        if valid_move:
+            self.cards_played[self.curr_player] += prev_choice  # Frequency of cards played by the current player
+            self.cards_remaining -= prev_choice                 # Frequency of cards remaining in play
+            self.skip_count = 0                                 # Reset the temporary skip count
+            remainder = sum(self.players[self.curr_player].hand) - sum(prev_choice) # Total number of cards remaining in the current player's hand
         
             if pattern in BOMB_SET:
-                self.bombs_played[self.curr_player] += 1
-                self.bomb_types_played[self.curr_player].add(pattern)
+                self.bombs_played[self.curr_player] += 1                # Number of bombs played by the current player
+                self.bomb_types_played[self.curr_player].add(pattern)   # Types of bombs played by the current player
+        
         else:
-            remainder = sum(self.players[self.curr_player].hand)
-            self.skips[self.curr_player] += 1
-            self.skip_count += 1
+            remainder = sum(self.players[self.curr_player].hand)    # Total number of cards remaining in the current player's hand
+            self.skips[self.curr_player] += 1                       # Total number of skips by the current player
+            self.skip_count += 1                                    # Increment the temporary skip count
 
-        self.num_remaining[self.curr_player] = remainder
+        self.num_remaining[self.curr_player] = remainder    # Update the number of cards remaining in the player's hand
 
         # Record the action and new state
         action_record = {
@@ -453,38 +464,4 @@ class TrainGameEnv(GameEnv):
 
         return new_state, reward, done, {}
 
-    def finalize_rewards(self, winners, episode_transitions):
-        """
-        Update the rewards for all players after the game ends, directly modifying episode_transitions.
-        
-        params:
-            winners (list): List of player indices who won the game
-            episode_transitions (list): The list of transitions for the episode that need final reward adjustments
-        """
-        if self.mode == "indv":
-            # Individual mode: assign win/loss rewards
-            for idx, transition in enumerate(episode_transitions):
-                state, action, reward, next_state, done = transition
-                curr_player = state["self"]["id"]
-                if curr_player in winners:
-                    updated_reward = REWARDS["win"]
-                else:
-                    updated_reward = REWARDS["loss"]
-                
-                # Update the transition in place with the final reward
-                episode_transitions[idx] = (state, action, updated_reward, next_state, done)
-        
-        else:
-            # Landlord mode: adjust rewards based on landlord/peasant outcome
-            for idx, transition in enumerate(episode_transitions):
-                state, action, reward, next_state, done = transition
-                curr_player = state["self"]["id"]
-                if curr_player in winners:
-                    # Peasants win, reward is multiplied by the number of peasants
-                    updated_reward = REWARDS["win"] * (self.num_players - len(winners))
-                else:
-                    # Landlord loses, loss is multiplied by the number of winners (peasants)
-                    updated_reward = REWARDS["loss"] * len(winners)
-                
-                # Update the transition in place with the final reward
-                episode_transitions[idx] = (state, action, updated_reward, next_state, done)
+

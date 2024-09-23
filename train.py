@@ -247,14 +247,7 @@ for episode in range(num_episodes):
         state = next_state
 
     # Once the game ends, finalize rewards based on final game result
-    if env.mode == "indv":
-        env.finalize_rewards([env.curr_player], episode_transitions)  # Single player win in individual mode
-    else:
-        landlord_wins = env.curr_player == env.landlord_idx
-        if landlord_wins:
-            env.finalize_rewards([env.landlord_idx], episode_transitions)  # Landlord wins
-        else:
-            env.finalize_rewards([p for p in range(env.num_players) if p != env.landlord_idx], episode_transitions)  # Peasants win
+    utils.finalize_rewards(mode=env.mode, num_players=env.num_players, episode_transitions=episode_transitions, winner=env.curr_player, landlord=env.landlord_idx)
 
     # Now update the agent for each transition in the episode
     for transition in episode_transitions:
