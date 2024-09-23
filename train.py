@@ -172,6 +172,10 @@ epsilon_decay = (EPSILON_START - EPSILON_END) / EPSILON_DECAY
 
 
 def select_action(state, epsilon):
+    # TODO: Use the number of skips in state to determine if agent is free to move
+    
+    
+    
     """Select an action using epsilon-greedy policy."""
     if random.random() < epsilon:
         # Random action (exploration)

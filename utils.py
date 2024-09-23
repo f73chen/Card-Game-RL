@@ -342,7 +342,7 @@ def is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand):
 
 
 # Print the current state of the game
-def print_game(valid_move, pattern, prev_choice, leading_rank, all_remaining, skip_count, curr_player, players, start=False, verbose=False):
+def print_game(valid_move, pattern, prev_choice, leading_rank, all_remaining, skip_count, next_player, players, start=False, verbose=False):
     if valid_move:
         # Print the initial hands at the start of the game
         if start:
@@ -370,7 +370,7 @@ def print_game(valid_move, pattern, prev_choice, leading_rank, all_remaining, sk
         print(f"Skip. Skip count: {skip_count}\n")
     
     # Announce the new current player
-    print(f"Current player: {curr_player}\n")
+    print(f"Next player: {next_player}\n")
 
 
 def finalize_rewards(mode, num_players, episode_transitions, winner, landlord):
