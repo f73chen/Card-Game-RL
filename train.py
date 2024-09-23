@@ -77,6 +77,27 @@ class LSTMDQNAgent(nn.Module):
         q_values = self.fc2(x)  # (batch_size, num_actions)
 
         return q_values
+    
+    def claim_landlord(self, card_freq):
+        # TODO: Use self.hand and card_freq to determine if agent should claim landlord
+        # Pass it into action selection but do not call env.step
+        pass
+    
+    def select_action(state, epsilon):
+        # TODO: Use the number of skips in state to determine if agent is free to move
+        
+        
+        
+        """Select an action using epsilon-greedy policy."""
+        if random.random() < epsilon:
+            # Random action (exploration)
+            return random.randint(0, agent.fc2.out_features - 1)
+        else:
+            # Select action with the highest Q-value (exploitation)
+            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
+            with torch.no_grad():
+                q_values = agent(state)
+            return q_values.argmax().item()
 
 
 def train(agent, target_agent, replay_buffer, optimizer, batch_size, gamma, device):
@@ -171,21 +192,7 @@ epsilon = EPSILON_START
 epsilon_decay = (EPSILON_START - EPSILON_END) / EPSILON_DECAY
 
 
-def select_action(state, epsilon):
-    # TODO: Use the number of skips in state to determine if agent is free to move
-    
-    
-    
-    """Select an action using epsilon-greedy policy."""
-    if random.random() < epsilon:
-        # Random action (exploration)
-        return random.randint(0, agent.fc2.out_features - 1)
-    else:
-        # Select action with the highest Q-value (exploitation)
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
-        with torch.no_grad():
-            q_values = agent(state)
-        return q_values.argmax().item()
+
 
 
 def generate_new_samples():

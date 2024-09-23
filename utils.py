@@ -1,3 +1,5 @@
+import os
+import json
 import random
 import numpy as np
 from consts import *
@@ -413,3 +415,38 @@ def finalize_rewards(mode, num_players, episode_transitions, winner, landlord):
             
             # Update the transition in place with the final reward
             episode_transitions[-p-1] = (state, action, updated_reward, next_state, done)
+            
+# Generate all card combinations for all patterns in the moveset
+# Read from json if available, else generate and save to json
+def generate_all_possible_moves(filename="data/all_possible_moves.json"):
+    # if os.path.exists(filename):
+    #     with open(filename, "r") as f:
+    #         moves = json.load(f)
+    #     return moves
+    
+    # Structure: (pattern, card frequency array)
+    moves = {pattern: [] for pattern in MOVESET_2}
+    
+    # 1x5: 5 consecutive singles
+    for i in range(9):
+        moves["1x5"].append([0]*i + [1]*5 + [0]*(8-i))
+    
+    
+    
+    
+    
+
+    with open(filename, "w") as f:
+        json.dump(moves, f)
+    return moves
+            
+
+# Return playable moves, if any
+# If yes, return True and a boolean mask of all possible moves
+# Else, return False and None
+def filter_valid_moves(pattern, prev_choice, leading_rank, hand, prev_hand_valid, moveset):
+    # TODO: Store the list of moves previously found to be valid, based only on the hand
+    # Each time, only incrementally check this list
+    # Then return the hand-valid + play-valid moves
+    # At the start, check all moves (prev_hand_valid = all_possible_moves)
+    pass

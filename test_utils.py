@@ -93,3 +93,8 @@ def test_finalize_rewards_4():
     
     finalize_rewards(mode, num_players, episode_transitions, winner, landlord)
     assert episode_transitions == expected_transitions
+
+
+def test_generate_all_possible_moves():
+    generate_all_possible_moves()
+
