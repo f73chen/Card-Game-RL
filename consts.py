@@ -56,8 +56,8 @@ MOVESET_1 = ["1x5",
              
              "2x3",
              
-             "3+1",
-             "3+2",
+             "3x1+1",
+             "3x1+2",
              
              "1",
              "2",
@@ -80,6 +80,8 @@ MOVESET_2 = ["1x5",     # 5 Consecutive Singles
              "1x11",    # 11 Consecutive Singles
              "1x12",    # 12 Consecutive Singles
              "1x13",    # 13 Consecutive Singles
+             "1x14",    # 14 Consecutive Singles
+             "1x15",    # 15 Consecutive Singles
              
              "2x3",     # 3 Consecutive Pairs
              "2x4",     # 4 Consecutive Pairs
@@ -92,30 +94,21 @@ MOVESET_2 = ["1x5",     # 5 Consecutive Singles
              "2x11",    # 11 Consecutive Pairs
              "2x12",    # 12 Consecutive Pairs
              "2x13",    # 13 Consecutive Pairs
+             "2x14",    # 14 Consecutive Pairs
+             "2x15",    # 15 Consecutive Pairs
              
-             "3+1",     # Triple + Single
+             "3x1+1",   # 1 Triple + 1 Single
              "3x2+1",   # 2 Consecutive Triples + 2 Singles
-             "3x3+1",   # 3 Consecutive Triples + 3 Singles
-             "3x4+1",   # 4 Consecutive Triples + 4 Singles
-             "3x5+1",   # 5 Consecutive Triples + 5 Singles
-             "3x6+1",   # 6 Consecutive Triples + 6 Singles
+            #  "3x3+1",   # 3 Consecutive Triples + 3 Singles
+            #  "3x4+1",   # 4 Consecutive Triples + 4 Singles
+            #  "3x5+1",   # 5 Consecutive Triples + 5 Singles
+            #  "3x6+1",   # 6 Consecutive Triples + 6 Singles
              
-             "3+2",     # Triple + Pair
+             "3x1+2",   # 1 Triple + 1 Pair
              "3x2+2",   # 2 Consecutive Triples + 2 Pairs
-             "3x3+2",   # 3 Consecutive Triples + 3 Pairs
-             "3x4+2",   # 4 Consecutive Triples + 4 Pairs
-             "3x5+2",   # 5 Consecutive Triples + 5 Pairs
-             
-             "4+1",     # Quadruple + 2 Singles
-             "4+2",     # Quadruple + 2 Pairs
-             "5+1",     # Quintuple + 3 Singles
-             "5+2",     # Quintuple + 3 Pairs
-             "6+1",     # Sextuple + 4 Singles
-             "6+2",     # Sextuple + 4 Pairs
-             "7+1",     # Septuple + 5 Singles
-             "7+2",     # Septuple + 5 Pairs
-             "8+1",     # Octuple + 6 Singles
-             "8+2",     # Octuple + 6 Pairs
+            #  "3x3+2",   # 3 Consecutive Triples + 3 Pairs
+            #  "3x4+2",   # 4 Consecutive Triples + 4 Pairs
+            #  "3x5+2",   # 5 Consecutive Triples + 5 Pairs
              
              "1",       # Single
              "2",       # Pair

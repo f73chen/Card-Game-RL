@@ -2,6 +2,7 @@ import os
 import json
 import random
 import numpy as np
+import itertools
 from consts import *
 
 def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
@@ -10,7 +11,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
     
     params:
         hand: Numpy frequency array like [1 1 1 3 0 1 1 2 0 2 1 0 1 0 0]
-        pattern: String name of the pattern like "3+2"
+        pattern: String name of the pattern like "3x1+2"
         
     returns:
         valid_move: True or False for whether the hand contains the given pattern
@@ -52,7 +53,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
                     leading_rank = rank - 2
                     break
                 
-        case "3+1":
+        case "3x1+1":
             triple_rank = -1
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 3:
@@ -67,7 +68,7 @@ def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):
                         leading_rank = triple_rank
                         break
         
-        case "3+2":
+        case "3x1+2":
             triple_rank = -1
             for rank, freq in enumerate(hand):
                 if rank > leading_rank and freq >= 3:
@@ -216,7 +217,7 @@ def read_user_cards(user_cards, pattern, leading_rank, hand):
     
     params:
         user_cards: String of cards like "334455"
-        pattern: String name of the pattern like "3+2"
+        pattern: String name of the pattern like "3x1+2"
         leading_rank: The previous leading rank
     """
     if not user_cards:  # User chose to skip the turn
@@ -262,7 +263,7 @@ def is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand):
     leading_rank only matters if the previous pattern continues
     
     params:
-        pattern: String name of the pattern like "3+2"
+        pattern: String name of the pattern like "3x1+2"
         choice: Numpy frequency array like [1 1 1 3 0 1 1 2 0 2 1 0 1 0 0]
         leading_rank: The previous leading rank
     """
@@ -290,11 +291,11 @@ def is_user_choice_valid(pattern, choice, user_cards, leading_rank, hand):
             if max(ranks) - min(ranks) != 2:                # Consecutive ranks
                 return False
             
-        case "3+1":
+        case "3x1+1":
             if sum(choice) != 4 or set(choice) != {0, 1, 3}:    # 1 triple and 1 singular card
                 return False
             
-        case "3+2":
+        case "3x1+2":
             if sum(choice) != 5 or set(choice) != {0, 2, 3}:    # 1 triple and 1 pair of cards
                 return False
             
@@ -424,18 +425,58 @@ def generate_all_possible_moves(filename="data/all_possible_moves.json"):
     #         moves = json.load(f)
     #     return moves
     
-    # Structure: (pattern, card frequency array)
-    moves = {pattern: [] for pattern in MOVESET_2}
+    # Structure: (pattern, leading rank, card frequency array)
+    moves = []
+    ranks = list(range(15))
     
-    # 1x5: 5 consecutive singles
-    for i in range(9):
-        moves["1x5"].append([0]*i + [1]*5 + [0]*(8-i))
+    # 1xn: n consecutive singles (5 --> 15)
+    for n in range(5, 16):
+        for i in range(16-n):
+            moves.append((f"1x{n}", i, [0]*i + [1]*n + [0]*(15-i-n)))
+            
+    # 2xn: n consecutive pairs (3 --> 15)
+    for n in range(3, 16):
+        for i in range(16-n):
+            moves.append((f"2x{n}", i, [0]*i + [2]*n + [0]*(15-i-n)))
     
-    
-    
-    
-    
+    # 3xn+1: n consecutive triples + n singles (1 --> 2)
+    for n in range(1, 3):
+        for i in range(14-n):
+            i_move = [0]*i + [3]*n + [0]*(15-i-n)
 
+            # Find all combinations of n random singles
+            for singles in itertools.combinations_with_replacement(ranks, n):
+                move_copy = i_move[:]
+                for single_rank in singles:
+                    move_copy[single_rank] += 1
+                moves.append((f"3x{n}+1", i, move_copy))
+                
+    # 3xn+2: n consecutive triples + n pairs (1 --> 2)
+    for n in range(1, 3):
+        for i in range(14-n):
+            i_move = [0]*i + [3]*n + [0]*(15-i-n)
+
+            # Find all combinations of n random pairs
+            for pairs in itertools.combinations_with_replacement(ranks, n):
+                move_copy = i_move[:]
+                for pair_rank in pairs:
+                    move_copy[pair_rank] += 2
+                moves.append((f"3x{n}+2", i, move_copy))
+        
+    # n: n of a kind (1 --> 8)
+    # Note: Jokers can only have 1 or 2 of a kind
+    for n in range(1, 9):
+        if n <= 2:
+            for i in range(15):
+                moves.append((str(n), i, [0]*i + [n] + [0]*(14-i)))
+        else:
+            for i in range(13):
+                moves.append((str(n), i, [0]*i + [n] + [0]*(14-i)))
+                
+    # Small and large Joker bombs
+    moves.append(("4.5", 13, [0]*13 + [1, 1]))
+    moves.append(("8.5", 13, [0]*13 + [2, 2]))
+            
     with open(filename, "w") as f:
         json.dump(moves, f)
     return moves

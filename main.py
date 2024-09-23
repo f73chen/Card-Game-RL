@@ -11,12 +11,14 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 
 
 # Play and store the game
-env = GameEnv(num_decks=2, num_players=3, mode="lord", players=[])
-env.reset()
-history = env.play_game(verbose=False)
+# env = GameEnv(num_decks=2, num_players=3, mode="lord", players=[])
+# env.reset()
+# history = env.play_game(verbose=False)
 
-game_name = "data/user_game.json"
-json.dump(history, open(game_name, "w"))
+# game_name = "data/user_game.json"
+# json.dump(history, open(game_name, "w"))
+
+utils.generate_all_possible_moves()
 
 # Load and replay the game
 # history = json.load(open("data/user_game.json", "r"))
