@@ -10,8 +10,7 @@ class Player:
         self.moveset = None
         self.landlord = False
         self.free = False
-            
-         
+                   
             
 class DefaultPlayer(Player):
     def __init__(self):
@@ -67,8 +66,7 @@ class DefaultPlayer(Player):
         """
         self.landlord = random.choice([True, False])
         return self.landlord
-    
-    
+       
     
 class UserPlayer(Player):
     def __init__(self):
@@ -150,8 +148,7 @@ class UserPlayer(Player):
         self.landlord = input("Claim the landlord cards? (y/n): ") == "y"
         return self.landlord
         
-        
-        
+           
 # TODO: Implement the RL player
 class RLPlayer(Player):
     def __init__(self):

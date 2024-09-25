@@ -1,4 +1,5 @@
 from utils import *
+from consts import *
 
 # Individual mode with 3 players
 def test_finalize_rewards_1():
@@ -94,7 +95,37 @@ def test_finalize_rewards_4():
     finalize_rewards(mode, num_players, episode_transitions, winner, landlord)
     assert episode_transitions == expected_transitions
 
+# Should not generate any moves that are impossible for 2 decks with moveset 2
+def test_get_all_possible_moves():
+    cards_remaining = np.array(CARD_FREQ) * 2
+    all_moves = get_all_possible_moves(overwrite=True)
+    deck_moves = deck_possible_moves(all_moves, cards_remaining, MOVESET_2)
+    
+    assert len(all_moves) == len(deck_moves)
+    assert len(all_moves) == 3513
 
-def test_generate_all_possible_moves():
-    pass
+# Should filter down to exactly 2722 possible moves for 1 deck with moveset 2
+def test_deck_possible_moves_1():
+    cards_remaining = np.array(CARD_FREQ) * 1
+    all_moves = get_all_possible_moves(overwrite=True)
+    deck_moves = deck_possible_moves(all_moves, cards_remaining, MOVESET_2)
+    
+    assert len(deck_moves) == 2722
+    
+# Filtering with stricter requirements should yield less possible moves
+def test_deck_possible_moves_2():
+    cards_remaining_1 = np.array(CARD_FREQ) * 1
+    cards_remaining_2 = np.array(CARD_FREQ) * 2
+    all_moves = get_all_possible_moves(overwrite=True)
+    
+    deck_moves_2_2 = deck_possible_moves(all_moves, cards_remaining_2, MOVESET_2)
+    deck_moves_1_2 = deck_possible_moves(all_moves, cards_remaining_1, MOVESET_2)
+    deck_moves_2_1 = deck_possible_moves(all_moves, cards_remaining_2, MOVESET_1)
+    deck_moves_1_1 = deck_possible_moves(all_moves, cards_remaining_1, MOVESET_1)
+    
+    assert len(deck_moves_2_2) > len(deck_moves_1_2)
+    assert len(deck_moves_2_2) > len(deck_moves_2_1)
+    
+    assert len(deck_moves_1_2) > len(deck_moves_1_1)
+    assert len(deck_moves_2_1) > len(deck_moves_1_1)
 

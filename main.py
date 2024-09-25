@@ -5,9 +5,8 @@ import json
 
 import utils
 from consts import *
-from game_env import GameEnv
+from game_env import GameEnv, TrainGameEnv
 from players import DefaultPlayer, UserPlayer, RLPlayer
-# from train import RNN_DQN
 
 
 # Play and store the game
@@ -18,7 +17,10 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 # game_name = "data/user_game.json"
 # json.dump(history, open(game_name, "w"))
 
-utils.generate_all_possible_moves()
+cards_remaining = np.array(CARD_FREQ) * 1
+all_possible_moves = utils.get_all_possible_moves(overwrite=False)
+deck_possible_moves = utils.deck_possible_moves(all_possible_moves, cards_remaining, MOVESET_1)
+print(len(deck_possible_moves))
 
 # Load and replay the game
 # history = json.load(open("data/user_game.json", "r"))

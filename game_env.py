@@ -161,8 +161,8 @@ class GameEnv:
         Lets players move in order until the game is over.
         """
         # Reset temporary variables
-        self.players[self.curr_player].free = True  # TODO !!!
-        valid_move = True                           # TODO !!!
+        self.players[self.curr_player].free = True
+        valid_move = True
         
         curr_skips = 0
         pattern = None
@@ -362,10 +362,13 @@ class TrainGameEnv(GameEnv):
         self.bombs_played = None
         self.bomb_types_played = None
         self.total_skips = None
+        
         self.curr_skips = 0
         self.pattern = None
         self.prev_choice = None
         self.leading_rank = None
+        
+        self.deck_possible_moves = None
         
     def reset(self):
         """
@@ -391,15 +394,19 @@ class TrainGameEnv(GameEnv):
         self.leading_rank = None
 
         # Deal the regular hand, then the landlord hand
-        # TODO
+        # TODO: Let the RL agent decide whether to claim landlord
         self.deal_cards(self.num_players, self.num_decks, self.mode)
-
-        # Update num_remaining after dealing the cards
-        self.num_remaining = np.array([sum(player.hand) for player in self.players])
         
         # After dealing cards, self.curr_player is the player to start
         # Set the first player to be free to move
         self.players[self.curr_player].free = True
+        
+        # Filter all possible actions based on the total card frequency
+        all_possible_moves = utils.get_all_possible_moves(overwrite=False)
+        self.deck_possible_moves = utils.deck_possible_moves(all_possible_moves, self.cards_remaining, self.moveset)
+
+        # Update num_remaining after dealing the cards
+        self.num_remaining = np.array([sum(player.hand) for player in self.players])
 
         return self.get_state(self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips)
 

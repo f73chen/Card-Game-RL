@@ -419,11 +419,11 @@ def finalize_rewards(mode, num_players, episode_transitions, winner, landlord):
             
 # Generate all card combinations for all patterns in the moveset
 # Read from json if available, else generate and save to json
-def generate_all_possible_moves(filename="data/all_possible_moves.json"):
-    # if os.path.exists(filename):
-    #     with open(filename, "r") as f:
-    #         moves = json.load(f)
-    #     return moves
+def get_all_possible_moves(filename="data/all_possible_moves.json", overwrite=False):
+    if os.path.exists(filename) and not overwrite:
+        with open(filename, "r") as f:
+            moves = json.load(f)
+        return moves
     
     # Structure: (pattern, leading rank, card frequency array)
     moves = []
@@ -461,7 +461,9 @@ def generate_all_possible_moves(filename="data/all_possible_moves.json"):
                 move_copy = i_move[:]
                 for pair_rank in pairs:
                     move_copy[pair_rank] += 2
-                moves.append((f"3x{n}+2", i, move_copy))
+                    
+                if move_copy[13] <= 2 and move_copy[14] <= 2:
+                    moves.append((f"3x{n}+2", i, move_copy))
         
     # n: n of a kind (1 --> 8)
     # Note: Jokers can only have 1 or 2 of a kind
@@ -481,11 +483,21 @@ def generate_all_possible_moves(filename="data/all_possible_moves.json"):
         json.dump(moves, f)
     return moves
             
+# Filter all possible moves to those possible with the given deck
+# For example, in games with 1 deck, 8-bombs are impossible
+def deck_possible_moves(moves, cards_remaining, moveset):
+    valid_moves = []
+    for move in moves:
+        pattern, _, move_freq = move
+        if pattern in moveset and min(cards_remaining - move_freq) >= 0:
+            valid_moves.append(move)
+    return valid_moves
+            
 
 # Return playable moves, if any
 # If yes, return True and a boolean mask of all possible moves
 # Else, return False and None
-def filter_valid_moves(pattern, prev_choice, leading_rank, hand, prev_hand_valid, moveset):
+def hand_possible_moves(pattern, prev_choice, leading_rank, hand, prev_hand_valid, moveset):
     # TODO: Store the list of moves previously found to be valid, based only on the hand
     # Each time, only incrementally check this list
     # Then return the hand-valid + play-valid moves
