@@ -419,7 +419,7 @@ def finalize_rewards(mode, num_players, episode_transitions, winner, landlord):
             
 # Generate all card combinations for all patterns in the moveset
 # Read from json if available, else generate and save to json
-def get_all_possible_moves(filename="data/all_possible_moves.json", overwrite=False):
+def get_all_moves(filename="data/all_moves.json", overwrite=False):
     if os.path.exists(filename) and not overwrite:
         with open(filename, "r") as f:
             moves = json.load(f)
@@ -483,23 +483,48 @@ def get_all_possible_moves(filename="data/all_possible_moves.json", overwrite=Fa
         json.dump(moves, f)
     return moves
             
-# Filter all possible moves to those possible with the given deck
+# Filter all possible moves to those possible with the given deck and moveset
 # For example, in games with 1 deck, 8-bombs are impossible
-def deck_possible_moves(moves, cards_remaining, moveset):
+def get_deck_moves(all_moves, cards_remaining, moveset):
     valid_moves = []
-    for move in moves:
+    for move in all_moves:
         pattern, _, move_freq = move
         if pattern in moveset and min(cards_remaining - move_freq) >= 0:
             valid_moves.append(move)
     return valid_moves
             
 
-# Return playable moves, if any
-# If yes, return True and a boolean mask of all possible moves
-# Else, return False and None
-def hand_possible_moves(pattern, prev_choice, leading_rank, hand, prev_hand_valid, moveset):
-    # TODO: Store the list of moves previously found to be valid, based only on the hand
-    # Each time, only incrementally check this list
-    # Then return the hand-valid + play-valid moves
-    # At the start, check all moves (prev_hand_valid = all_possible_moves)
-    pass
+def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_moves):
+    """
+    Return a mask of moves the player can play both for the current hand and the current situation
+    
+    params:
+        hand: Numpy frequency array like [1 1 1 3 0 1 1 2 0 2 1 0 1 0 0]
+        free: Whether the player is free to choose any move
+        prev_pattern: The pattern of the previous move
+        prev_leading_rank: The rank of the leading card in the previous move
+        hand_mask: Mask of valid moves based on the entire hand
+        deck_moves: List of all possible moves like (pattern, leading rank, card frequency array)
+        
+    returns:
+        valid_move: Whether the player has any valid move
+        hand_mask: Updated mask of valid moves based on the current hand
+        curr_mask: Mask of valid moves based on the current situation
+    """
+    # First, update the valid move mask based on the entire hand
+    for i, valid_move in enumerate(hand_mask):
+        if valid_move and min(hand - deck_moves[i][2]) < 0:
+            hand_mask[i] = False
+
+    # Next, check the specific situation based on free, pattern, and leading_rank
+    # If player is free, any move from the hand is playable
+    if free:
+        return True, hand_mask, hand_mask
+    
+    else:
+        curr_mask = hand_mask.copy()
+        for i, valid_move in enumerate(hand_mask):
+            pattern, leading_rank, move_freq = deck_moves[i]
+            if not valid_move or pattern != prev_pattern or leading_rank <= prev_leading_rank or min(hand - move_freq) < 0:
+                curr_mask[i] = False
+        return any(curr_mask), hand_mask, curr_mask

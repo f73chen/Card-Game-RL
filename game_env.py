@@ -368,7 +368,7 @@ class TrainGameEnv(GameEnv):
         self.prev_choice = None
         self.leading_rank = None
         
-        self.deck_possible_moves = None
+        self.deck_moves = None
         
     def reset(self):
         """
@@ -402,8 +402,8 @@ class TrainGameEnv(GameEnv):
         self.players[self.curr_player].free = True
         
         # Filter all possible actions based on the total card frequency
-        all_possible_moves = utils.get_all_possible_moves(overwrite=False)
-        self.deck_possible_moves = utils.deck_possible_moves(all_possible_moves, self.cards_remaining, self.moveset)
+        all_moves = utils.get_all_moves(overwrite=False)
+        self.deck_moves = utils.get_deck_moves(all_moves, self.cards_remaining, self.moveset)
 
         # Update num_remaining after dealing the cards
         self.num_remaining = np.array([sum(player.hand) for player in self.players])

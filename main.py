@@ -18,9 +18,9 @@ from players import DefaultPlayer, UserPlayer, RLPlayer
 # json.dump(history, open(game_name, "w"))
 
 cards_remaining = np.array(CARD_FREQ) * 1
-all_possible_moves = utils.get_all_possible_moves(overwrite=False)
-deck_possible_moves = utils.deck_possible_moves(all_possible_moves, cards_remaining, MOVESET_1)
-print(len(deck_possible_moves))
+all_moves = utils.get_all_moves(overwrite=False)
+deck_moves = utils.get_deck_moves(all_moves, cards_remaining, MOVESET_1)
+print(len(deck_moves))
 
 # Load and replay the game
 # history = json.load(open("data/user_game.json", "r"))
