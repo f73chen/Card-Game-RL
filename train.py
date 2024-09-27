@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import numpy as np
 import random
 from collections import deque
-
 from game_env import GameEnv
 
 class ReplayBuffer:
@@ -29,75 +28,6 @@ class ReplayBuffer:
 
     def __len__(self):
         return len(self.buffer)
-
-
-class LSTMDQNAgent(nn.Module):
-    def __init__(self, num_players, num_patterns, num_ranks, lstm_hidden_size=128, fc_hidden_size=256, num_actions=100):
-        super(LSTMDQNAgent, self).__init__()
-
-        # Embedding layers for player ID, move patterns, and card ranks
-        self.player_embedding = nn.Embedding(num_players, 8)
-        self.pattern_embedding = nn.Embedding(num_patterns, 64)
-        self.rank_embedding = nn.Embedding(num_ranks, 64)
-
-        # LSTM layer
-        self.lstm = nn.LSTM(input_size=8 + 64 + 64, hidden_size=lstm_hidden_size, batch_first=True)
-
-        # Fully connected layers
-        self.fc1 = nn.Linear(lstm_hidden_size, fc_hidden_size)
-        self.fc2 = nn.Linear(fc_hidden_size, num_actions)
-
-    def forward(self, player_id, move_pattern, card_rank, move_history):
-        """
-        Forward pass of the LSTM-DQN agent.
-        
-        Params:
-            player_id: Tensor of player IDs for the current move (batch_size,)
-            move_pattern: Tensor of move patterns (batch_size,)
-            card_rank: Tensor of card ranks (batch_size,)
-            move_history: Sliding window of past 10 moves (batch_size, sequence_length, input_size)
-        
-        Returns:
-            Q-values for each action in the current state (batch_size, num_actions)
-        """
-        # Embedding lookups
-        player_emb = self.player_embedding(player_id)  # (batch_size, 8)
-        pattern_emb = self.pattern_embedding(move_pattern)  # (batch_size, 64)
-        rank_emb = self.rank_embedding(card_rank)  # (batch_size, 64)
-
-        # Concatenate the embeddings to form a single move representation
-        move_emb = torch.cat([player_emb, pattern_emb, rank_emb], dim=-1)  # (batch_size, 136)
-
-        # Pass the move history through the LSTM layer
-        lstm_out, _ = self.lstm(move_history)  # (batch_size, sequence_length, lstm_hidden_size)
-        lstm_last_hidden = lstm_out[:, -1, :]  # (batch_size, lstm_hidden_size)
-
-        # Fully connected layers to predict Q-values
-        x = torch.relu(self.fc1(lstm_last_hidden))  # (batch_size, fc_hidden_size)
-        q_values = self.fc2(x)  # (batch_size, num_actions)
-
-        return q_values
-    
-    def claim_landlord(self, card_freq):
-        # TODO: Use self.hand and card_freq to determine if agent should claim landlord
-        # Pass it into action selection but do not call env.step
-        pass
-    
-    def select_action(state, epsilon):
-        # TODO: Use the number of skips in state to determine if agent is free to move
-        
-        
-        
-        """Select an action using epsilon-greedy policy."""
-        if random.random() < epsilon:
-            # Random action (exploration)
-            return random.randint(0, agent.fc2.out_features - 1)
-        else:
-            # Select action with the highest Q-value (exploitation)
-            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(device)
-            with torch.no_grad():
-                q_values = agent(state)
-            return q_values.argmax().item()
 
 
 def train(agent, target_agent, replay_buffer, optimizer, batch_size, gamma, device):
@@ -203,7 +133,8 @@ def generate_new_samples():
 
         for step in range(MAX_STEPS_PER_EPISODE):
             # Select action based on epsilon-greedy policy
-            action = select_action(state, epsilon)
+            valid_move, pattern, prev_choice, leading_rank, remainder = player.select_action(state, epsilon)
+            action = (valid_move, pattern, prev_choice, leading_rank)   # Repackage it for step and recording
 
             # Take action in the environment and observe the result
             next_state, reward, done, _ = env.step(action)

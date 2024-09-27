@@ -220,12 +220,13 @@ def read_user_cards(user_cards, pattern, leading_rank, hand):
         pattern: String name of the pattern like "3x1+2"
         leading_rank: The previous leading rank
     """
+    choice = np.zeros(15).astype(int)
+        
     if not user_cards:  # User chose to skip the turn
-        return False, pattern, None, -1, True
+        return False, pattern, choice, -1, True
     
     else:   # Did not skip turn
         # Note: If free to move, the leading rank is already reset to -1 in main.py
-        choice = [0] * 15
         # Check if the user played a bomb then update pattern and choice
         # If length = 1, 2, or 3, it is a regular play and the pattern can only be set by the player if the player was free to move
         # If length >= 4, it is a bomb that can overwrite the pattern

@@ -1,6 +1,7 @@
 import random
 import numpy as np
 import utils
+
 from consts import *
 from players import DefaultPlayer, UserPlayer, RLPlayer
 
@@ -190,7 +191,7 @@ class GameEnv:
                 curr_skips = 0
             
             # Player makes a move
-            valid_move, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].move(pattern=pattern, prev_choice=prev_choice, leading_rank=leading_rank)
+            valid_move, pattern, prev_choice, leading_rank, remainder = self.players[self.curr_player].select_action(state=curr_state)
             num_remaining[self.curr_player] = remainder   # Update the number of cards remaining in the player's hand
             
             # Update the remaining cards in play
