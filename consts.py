@@ -38,10 +38,10 @@ BOMB_SET = ["4", "5", "6", "7", "8", "4.5", "8.5"]
 CARD_FREQ = [4] * 13 + [1, 1]
 
 # Number of cards to deal to each player depending on the number of players and decks
-CARDS_PER_PLAYER = {"indv": {4: {1: [14, 14, 13, 13],
-                                 2: [27, 27, 27, 27]},
-                             3: {1: [18, 18, 18],
-                                 2: [36, 36, 36]}},
+CARDS_PER_PLAYER = {"indv": {4: {1: [[14, 14, 13, 13]],
+                                 2: [[27, 27, 27, 27]]},
+                             3: {1: [[18, 18, 18]],
+                                 2: [[36, 36, 36]]}},
                     "lord": {3: {1: ([17, 17, 17], 3),    # 17 cards each and 3 to the landlord
                                  2: ([34, 34, 34], 6)}}}  # 34 cards each and 6 to the landlord
 
