@@ -511,6 +511,9 @@ def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_
         hand_mask: Updated mask of valid moves based on the current hand
         curr_mask: Mask of valid moves based on the current situation
     """
+    if hand_mask is None:
+        hand_mask = [True] * len(deck_moves)
+    
     # First, update the valid move mask based on the entire hand
     for i, valid_move in enumerate(hand_mask):
         if valid_move and min(hand - deck_moves[i][2]) < 0:

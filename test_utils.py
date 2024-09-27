@@ -213,3 +213,23 @@ def test_get_hand_moves_4():
     assert valid_move == False
     assert hand_mask == [True, True, False, True]
     assert curr_mask == [False, False, False, False]
+
+# Case 5: Not free to move, no playable moves, and empty previous hand mask
+def test_get_hand_moves_5():
+    # Assume that player hand is always a numpy array
+    hand = np.array([1, 1, 2, 3, 3, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    deck_moves = [["1", 4, [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                  ["1x6", 0, [1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                  ["2x3", 1, [0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]],
+                  ["2x3", 2, [0, 0, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]]
+    
+    free = False
+    prev_pattern = "2x3"
+    prev_leading_rank = 2
+    hand_mask = None
+
+    valid_move, hand_mask, curr_mask = get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_moves)
+    
+    assert valid_move == False
+    assert hand_mask == [True, True, False, True]
+    assert curr_mask == [False, False, False, False]
