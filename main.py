@@ -21,7 +21,7 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         player.deck_moves = env.deck_moves
 
     for episode in range(num_episodes):
-        # TODO: Reset all players
+        # Reset all player variables
         for player in players:
             player.reset()
         
@@ -33,17 +33,18 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         landlord_cards, player_hands = utils.deal_regular_cards(num_players, num_decks, mode)
         for p in range(num_players):
             players[p].hand = player_hands[p]
-        
-        # Get the initial state right after reset
-        state = env.reset(players)
+            
+        transitions = []
             
         # Players take turns to claim the landlord cards, starting from player 0
         if mode == "lord":
             for idx, player in enumerate(players):
-                pattern, choice, leading_rank, remainder = player.select_action(state)
-                new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder, landlord_cards)
+                state = env.get_state(players, curr_player)
+                pattern, choice, leading_rank, remainder = player.select_action(state, landlord_cards)
+                action, new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder, landlord_cards)
                 
-                # TODO: Record state transitions here too
+                # Record state transitions
+                transitions.append((state, action, new_state, reward, done))
                 
                 # Stop when the landlord has been claimed/assigned
                 if env.landlord_idx is not None:
@@ -56,14 +57,12 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         # Keep playing until the game is guaranteed to end
         done = False
         while not done:
-            # TODO: Move get_state into env; call it before select_action
-            state = new_state
-            
+            state = env.get_state(players, curr_player)
             pattern, choice, leading_rank, remainder = players[curr_player].select_action(state)
-            new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder)
+            action, new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder)
 
-            # TODO: Replay buffer and record transition stuff (if training)
-            # transitions.append((state['agent_1'], action, reward, new_state['agent_1'], done))
+            # Record state transitions
+            transitions.append((state, action, new_state, reward, done))
 
             # Continue to the next player
             curr_player = (curr_player + 1) % num_players

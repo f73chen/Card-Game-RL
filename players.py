@@ -29,42 +29,136 @@ class Player:
         self.hand_mask = None
         self.curr_mask = None
         
-    # TODO: Select the lowest available action unless must skip
-    def select_action(self, state):
-        # When claiming landlord cards, only have 2 actions (claim/refuse)
-        if state["choosing_landlord"]:
-            self.curr_mask = [False] * len(self.deck_moves)
-            self.curr_mask[-3] = True   # claim_landlord
-            self.curr_mask[-2] = True   # refuse_landlord
+    # Default: Select the lowest available action unless player must skip
+    def select_action(self, state, landlord_cards=None):
+        # Player becomes free to move if everyone else skipped
+        if state["curr_skips"] >= self.num_players - 1:
+            self.free = True
             
-        # Normal play
+        # If free to move, can choose any pattern
+        if self.free:
+            prev_pattern = None
+            prev_leading_rank = -1
+        
+        # If not free to move, must follow previous pattern
         else:
-            # Agent becomes free to move if everyone else skipped
-            if state["curr_skips"] >= self.num_players - 1:
-                self.free = True
-                
-            # Free to move, can choose any pattern
-            if self.free:
-                prev_pattern = None
-                prev_leading_rank = -1
-            
-            # Not free to move, must follow previous pattern
-            else:
-                prev_pattern = state["action_history"][-1]["pattern"]
-                prev_leading_rank = state["action_history"][-1]["leading_rank"]
-                
-            self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves)
-            self.free = False
+            prev_pattern = state["action_history"][-1]["pattern"]
+            prev_leading_rank = state["action_history"][-1]["leading_rank"]
+        
+        # Get the mask of available actions
+        self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves, state["choosing_landlord"])
+        self.free = False
             
         # Action selection logic
-        
-        
-        
-        # if pattern != "skip":
-        #     # TODO: Make sure choice is a numpy array
-        #     self.hand -= choice
+        # If skipping is the only available action, must skip
+        if sum(self.curr_mask) == 1:
+            pattern, choice, leading_rank = self.deck_moves[-1]
             
-        # return pattern, choice, leading_rank, np.sum(self.hand)
+        # Else randomly select a pattern and choose the first (smallest) option
+        else:
+            available_actions = self.deck_moves[self.curr_mask]
+            available_patterns = set([action[0] for action in available_actions])
+            pattern = np.random.choice(available_patterns)
+            for action in available_actions:
+                if action[0] == pattern:
+                    pattern, choice, leading_rank = action
+                    
+        self.hand -= np.array(choice)
+            
+        return pattern, choice, leading_rank, np.sum(self.hand)
+    
+    
+class UserPlayer(Player):
+    # Note: Inherits __init__ and reset()
+    def select_action(self, state, landlord_cards=None):
+        # Player becomes free to move if everyone else skipped
+        if state["curr_skips"] >= self.num_players - 1:
+            self.free = True
+            
+        # If free to move, can choose any pattern
+        if self.free:
+            prev_pattern = None
+            prev_leading_rank = -1
+        
+        # If not free to move, must follow previous pattern
+        else:
+            prev_pattern = state["action_history"][-1]["pattern"]
+            prev_leading_rank = state["action_history"][-1]["leading_rank"]
+        
+        # Get the mask of available actions
+        self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves, state["choosing_landlord"])
+            
+        # Action selection logic
+        # If skipping is the only available action, must skip
+        if sum(self.curr_mask) == 1:
+            pattern, choice, leading_rank = self.deck_moves[-1]
+            print("No playable moves, automatically skipped")
+            
+        # Else let the user choose an action and validate it
+        else:
+            available_actions = self.deck_moves[self.curr_mask]
+            available_patterns = set([action[0] for action in available_actions])
+            
+            if state["choosing_landlord"]:                
+                print(f"\nCards in hand: {utils.freq_array_to_card_str(self.hand)}")
+                print(f"Landlord cards: {utils.freq_array_to_card_str(landlord_cards)}")
+                claimed = input("Claim the landlord cards? (y/n): ") == "y"
+                
+                if claimed:
+                    pattern, choice, leading_rank = [action for action in available_actions if action[0] == "claim_landlord"][0]
+                else:
+                    pattern, choice, leading_rank = [action for action in available_actions if action[0] == "refuse_landlord"][0]
+            
+            else:
+                print(f"Hand: {utils.freq_array_to_card_str(self.hand)}")
+                while True:
+                    valid_input = True
+                    if self.free:
+                        print("FREE TO MOVE")
+                        
+                    # Note: Always ask for the pattern in case of bomb
+                    pattern = input("Enter the pattern: ")
+                    if not pattern:
+                        pattern = prev_pattern
+                    
+                    # Validate the pattern
+                    if pattern not in available_patterns:
+                        print("Invalid pattern. Please try again.")
+                        print(f"Available patterns: {available_patterns}")
+                        continue
+                        
+                    # Assume the first card is the leading rank
+                    user_cards = input("Enter your move: ")
+                    
+                    # Check if all inputs represent an existing card
+                    unknown_cards = []
+                    for c in user_cards:
+                        if c not in CARDS.values():
+                            unknown_cards.append(c)
+                    if unknown_cards:
+                        print(f"{unknown_cards} is not a valid card. Please try again.")
+                        continue
+                    
+                    # Can't skip when free
+                    if self.free and not user_cards:
+                        print("Cannot skip when free to move. Please try again.")
+                        continue
+                    
+                    # Assume that the pattern and individual cards are already valid
+                    pattern, choice, leading_rank, valid_choice = utils.read_user_cards(pattern, user_cards, available_actions)
+                            
+                    # Escape the while loop only if the input is valid
+                    if not valid_choice:
+                        print("Invalid card selection. Please try again.")
+                    else:
+                        break
+                    
+                # After a successful move, the player is no longer free to move
+                self.free = False
+                    
+        self.hand -= np.array(choice).astype(int)
+        return pattern, choice, leading_rank, np.sum(self.hand)
+        
     
     
 class RLPlayer(Player):
@@ -134,3 +228,4 @@ class RLPlayer(Player):
         # TODO: If move is valid, update remainder
         
         # TODO: return valid_move, pattern, prev_choice, leading_rank, remainder
+        pass
