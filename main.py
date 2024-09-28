@@ -41,34 +41,24 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         if mode == "lord":
             for idx, player in enumerate(players):
                 pattern, choice, leading_rank, remainder = player.select_action(state)
+                new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder, landlord_cards)
                 
-                # Claim or refuse the landlord cards
-                if pattern == "claim_landlord":
-                    curr_player = idx
-                    player.landlord = True
+                # TODO: Record state transitions here too
+                
+                # Stop when the landlord has been claimed/assigned
+                if env.landlord_idx is not None:
+                    curr_player = env.landlord_idx
                     break
-                elif pattern == "refuse_landlord":
-                    env.refused_landlord.append(idx)
-                else:
-                    raise(NotImplementedError("Must claim or refuse landlord"))
-                
-            # If no one claimed the cards, player 0 automatically becomes the landlord
-            if curr_player == 0 and players[0].landlord == False:
-                players[0].landlord = True
-                
-            # Add the cards to the landlord's hand
-            players[curr_player].hand += landlord_cards
         
         # Set the first player to be free to move
         players[curr_player].free = True
         
-        # Get the state again after processing the landlord cards
-        # This one will be used in training
-        state = env.get_first_state(players, curr_player)
-        
         # Keep playing until the game is guaranteed to end
         done = False
         while not done:
+            # TODO: Move get_state into env; call it before select_action
+            state = new_state
+            
             pattern, choice, leading_rank, remainder = players[curr_player].select_action(state)
             new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder)
 

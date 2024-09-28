@@ -31,28 +31,40 @@ class Player:
         
     # TODO: Select the lowest available action unless must skip
     def select_action(self, state):
-        if state["action_history"]:
-            prev_pattern = state["action_history"][-1]["pattern"]
-            prev_leading_rank = state["action_history"][-1]["leading_rank"]
+        # When claiming landlord cards, only have 2 actions (claim/refuse)
+        if state["choosing_landlord"]:
+            self.curr_mask = [False] * len(self.deck_moves)
+            self.curr_mask[-3] = True   # claim_landlord
+            self.curr_mask[-2] = True   # refuse_landlord
+            
+        # Normal play
         else:
-            prev_pattern = None
-            prev_leading_rank = -1
-        
-        # Agent is free to move if everyone else skipped
-        if state["curr_skips"] >= self.num_players - 1:
-            self.free = True
+            # Agent becomes free to move if everyone else skipped
+            if state["curr_skips"] >= self.num_players - 1:
+                self.free = True
+                
+            # Free to move, can choose any pattern
+            if self.free:
+                prev_pattern = None
+                prev_leading_rank = -1
             
-        self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves)
-        self.free = False
-        
-        
-        # TODO: Modify hand_mask and curr_mask dep. on if currently claiming landlord
-        
-        if pattern != "skip":
-            # TODO: Make sure choice is a numpy array
-            self.hand -= choice
+            # Not free to move, must follow previous pattern
+            else:
+                prev_pattern = state["action_history"][-1]["pattern"]
+                prev_leading_rank = state["action_history"][-1]["leading_rank"]
+                
+            self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves)
+            self.free = False
             
-        return pattern, choice, leading_rank, np.sum(self.hand)
+        # Action selection logic
+        
+        
+        
+        # if pattern != "skip":
+        #     # TODO: Make sure choice is a numpy array
+        #     self.hand -= choice
+            
+        # return pattern, choice, leading_rank, np.sum(self.hand)
     
     
 class RLPlayer(Player):

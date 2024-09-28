@@ -178,7 +178,7 @@ def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_
     
 def get_state(num_players, players, curr_player, action_history,
               num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, total_skips, curr_skips,
-              mode, claiming_landlord, refused_landlord):
+              mode, landlord_idx, choosing_landlord, refused_landlord):
     """
     Record the current state of the game.
     """
@@ -207,7 +207,7 @@ def get_state(num_players, players, curr_player, action_history,
         
                 "curr_skips": curr_skips,
                 "mode": mode,
-                "claiming_landlord": claiming_landlord,
+                "choosing_landlord": choosing_landlord,
                 "refused_landlord": refused_landlord,
                 "action_history":   action_history.copy()}
     
