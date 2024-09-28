@@ -5,38 +5,6 @@ import numpy as np
 import itertools
 
 from consts import *
-    
-# Print the current state of the game
-def print_game(valid_move, pattern, prev_choice, leading_rank, all_remaining, skip_count, next_player, players, start=False, verbose=False):
-    if valid_move:
-        # Print the initial hands at the start of the game
-        if start:
-            if verbose:
-                for idx, player in enumerate(players):
-                    print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__} ({'Landlord' if player.landlord else 'Peasant'})")
-            else:
-                for idx, player in enumerate(players):
-                    print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
-                
-        # Print the most recent move and new hands
-        else:
-            if verbose:
-                print(f"Choice: [{freq_array_to_card_str(prev_choice)}], pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
-                for idx, player in enumerate(players):
-                    print(f"Player {idx}: {player.hand} {sum(player.hand)} ({'Landlord' if player.landlord else 'Peasant'})")
-            else:
-                print(f"Choice: [{freq_array_to_card_str(prev_choice)}], pattern: {pattern}\n")
-                for idx, player in enumerate(players):
-                    print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
-                    
-        print(f"All remaining: {freq_array_to_card_str(all_remaining)}")
-        print()
-    else:
-        print(f"Skip. Skip count: {skip_count}\n")
-    
-    # Announce the new current player
-    print(f"Next player: {next_player}\n")
-
 
 def finalize_rewards(mode, num_players, episode_transitions, winner, landlord):
     """

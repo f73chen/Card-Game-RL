@@ -246,6 +246,34 @@ def read_user_cards(pattern, user_cards, available_actions):
         return None, None, None, False
     
     
+# Print the current state of the game
+def print_game(pattern, choice, leading_rank, new_state, players, start=False, verbose=False):
+    if pattern == "skip":
+        print(f"Skip. Skip count: {new_state["curr_skips"]}\n")
+    else:
+        if start:
+            if verbose:
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__} ({'Landlord' if player.landlord else 'Peasant'})")
+            else:
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+        else:
+            if verbose:
+                print(f"Choice: [{freq_array_to_card_str(choice)}], pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {player.hand} {sum(player.hand)} ({'Landlord' if player.landlord else 'Peasant'})")
+            else:
+                print(f"Choice: [{freq_array_to_card_str(choice)}], pattern: {pattern}\n")
+                for idx, player in enumerate(players):
+                    print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+                 
+        print(f"All remaining: {freq_array_to_card_str(new_state["opponents"]["all_cards_remaining"])}")
+        print()
+
+    print(f"Next player: {new_state["opponents"]["id"][0]}\n")
+
+    
 def announce_winner(mode, curr_player, winner_is_landlord):
     if mode == "indv":
         print(f"Game over. Player {curr_player} wins!")

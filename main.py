@@ -5,7 +5,7 @@ import json
 import utils
 from consts import *
 from env import GameEnv
-from players import DefaultPlayer, UserPlayer, RLPlayer
+from players import Player, UserPlayer, RLPlayer
 
 
 def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESET_1, num_episodes=1, seed=None):
@@ -55,6 +55,7 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         players[curr_player].free = True
         
         # Keep playing until the game is guaranteed to end
+        start = True
         done = False
         while not done:
             state = env.get_state(players, curr_player)
@@ -63,11 +64,15 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
 
             # Record state transitions
             transitions.append((state, action, new_state, reward, done))
+            
+            utils.print_game(pattern, choice, leading_rank, new_state, players, start, verbose=False)
+            start = False
+            
+            if done:
+                utils.announce_winner(mode, curr_player, players[curr_player].landlord)
 
             # Continue to the next player
             curr_player = (curr_player + 1) % num_players
-
-        utils.announce_winner(mode, curr_player, player.curr_player.landlord)
         
         # TODO: Finalize rewards in the transition list after the game ends
         # TODO: Update RL agents using the game history (if training)
