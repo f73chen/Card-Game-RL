@@ -12,13 +12,13 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
     if seed is not None:
         random.seed(seed)
 
-    # Initialize the players
+    # Initialize the players and environment
     num_players, players = utils.adjust_player_count()
-    for player in players:
-        player.moveset = moveset
-
-    # Initialize the environment
     env = GameEnv(num_decks, num_players, mode, moveset)
+    
+    for player in players:
+        player.num_players = num_players
+        player.deck_moves = env.deck_moves
 
     for episode in range(num_episodes):
         # TODO: Reset all players
@@ -40,15 +40,17 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         # Players take turns to claim the landlord cards, starting from player 0
         if mode == "lord":
             for idx, player in enumerate(players):
-                valid_move, _, _, _, _ = player.select_action(state)
+                pattern, choice, leading_rank, remainder = player.select_action(state)
                 
-                # valid_move = True means claiming the landlord cards in this case
-                if valid_move:
+                # Claim or refuse the landlord cards
+                if pattern == "claim_landlord":
                     curr_player = idx
                     player.landlord = True
                     break
-                else:
+                elif pattern == "refuse_landlord":
                     env.refused_landlord.append(idx)
+                else:
+                    raise(NotImplementedError("Must claim or refuse landlord"))
                 
             # If no one claimed the cards, player 0 automatically becomes the landlord
             if curr_player == 0 and players[0].landlord == False:
@@ -67,8 +69,8 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         # Keep playing until the game is guaranteed to end
         done = False
         while not done:
-            valid_move, pattern, choice, leading_rank, remainder = players[curr_player].select_action(state)
-            new_state, reward, done = env.step(players, curr_player, valid_move, pattern, choice, leading_rank, remainder)
+            pattern, choice, leading_rank, remainder = players[curr_player].select_action(state)
+            new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder)
 
             # TODO: Replay buffer and record transition stuff (if training)
             # transitions.append((state['agent_1'], action, reward, new_state['agent_1'], done))

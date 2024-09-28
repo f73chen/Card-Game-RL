@@ -115,6 +115,10 @@ def get_all_moves(filename="data/all_moves.json", overwrite=False):
     # Small and large Joker bombs
     moves.append(("4.5", 13, [0]*13 + [1, 1]))
     moves.append(("8.5", 13, [0]*13 + [2, 2]))
+    
+    moves.append(("claim_landlord", 0, [0]*15))
+    moves.append(("refuse_landlord", 0, [0]*15))
+    moves.append(("skip", 0, [0]*15))
             
     with open(filename, "w") as f:
         json.dump(moves, f)
@@ -123,12 +127,12 @@ def get_all_moves(filename="data/all_moves.json", overwrite=False):
 # Filter all possible moves to those possible with the given deck and moveset
 # For example, in games with 1 deck, 8-bombs are impossible
 def get_deck_moves(all_moves, cards_remaining, moveset):
-    valid_moves = []
+    deck_moves = []
     for move in all_moves:
         pattern, _, move_freq = move
         if pattern in moveset and min(cards_remaining - move_freq) >= 0:
-            valid_moves.append(move)
-    return valid_moves
+            deck_moves.append(move)
+    return deck_moves
             
 
 def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_moves):
@@ -140,20 +144,19 @@ def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_
         free: Whether the player is free to choose any move
         prev_pattern: The pattern of the previous move
         prev_leading_rank: The rank of the leading card in the previous move
-        hand_mask: Mask of valid moves based on the entire hand
+        hand_mask: Mask of playable moves based on the entire hand
         deck_moves: List of all possible moves like (pattern, leading rank, card frequency array)
         
     returns:
-        valid_move: Whether the player has any valid move
-        hand_mask: Updated mask of valid moves based on the current hand
-        curr_mask: Mask of valid moves based on the current situation
+        hand_mask: Updated mask of playable moves based on the current hand
+        curr_mask: Mask of playable moves based on the current situation
     """
     if hand_mask is None:
         hand_mask = [True] * len(deck_moves)
     
-    # First, update the valid move mask based on the entire hand
-    for i, valid_move in enumerate(hand_mask):
-        if valid_move and min(hand - deck_moves[i][2]) < 0:
+    # First, update the hand mask based on the new hand
+    for i, mask in enumerate(hand_mask):
+        if mask and min(hand - deck_moves[i][2]) < 0:
             hand_mask[i] = False
 
     # Next, check the specific situation based on free, pattern, and leading_rank
@@ -163,11 +166,14 @@ def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_
     
     else:
         curr_mask = hand_mask.copy()
-        for i, valid_move in enumerate(hand_mask):
+        for i, mask in enumerate(hand_mask):
             pattern, leading_rank, move_freq = deck_moves[i]
-            if not valid_move or pattern != prev_pattern or leading_rank <= prev_leading_rank or min(hand - move_freq) < 0:
+            if not mask or pattern != prev_pattern or leading_rank <= prev_leading_rank or min(hand - move_freq) < 0:
                 curr_mask[i] = False
-        return any(curr_mask), hand_mask, curr_mask
+                
+        # Make sure skipping is always an option
+        curr_mask[-1] = True
+        return hand_mask, curr_mask
     
     
 def get_state(num_players, players, curr_player, action_history,
@@ -208,21 +214,17 @@ def get_state(num_players, players, curr_player, action_history,
     return state
 
 
-def calculate_reward(valid_move, num_cards_played, remainder):
+def calculate_reward(skipped, num_cards_played, remainder):
     """
     Calculate the reward for a particular action.
     Note: Losses are calculated only after the game ends.
-    
-    params:
-        valid_move (bool):    Whether the player made a valid move
-        remainder  (int):     Number of cards remaining in the player's hand
     """
     if remainder == 0:
         return REWARDS["win"]
-    elif valid_move:
-        return REWARDS["valid"] * num_cards_played
+    elif skipped:
+        return REWARDS["skip"]
     else:
-        return REWARDS["pass"]
+        return REWARDS["valid"] * num_cards_played
     
     
 def announce_winner(mode, curr_player, winner_is_landlord):

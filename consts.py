@@ -49,7 +49,7 @@ CARDS_PER_PLAYER = {"indv": {4: {1: [[14, 14, 13, 13]],
 REWARDS = {"win": 10,
            "loss": -10,
            "valid": 0.1,
-           "pass": -0.1}
+           "skip": -0.1}
 
 # Simplified moveset
 MOVESET_1 = ["1x5",
@@ -68,7 +68,11 @@ MOVESET_1 = ["1x5",
              "7",
              "8",
              "4.5", # Small Joker bomb
-             "8.5"] # Large Joker bomb
+             "8.5", # Large Joker bomb
+             
+             "claim_landlord",
+             "refuse_landlord",
+             "skip"] 
 
 # Comprehensive moveset
 MOVESET_2 = ["1x5",     # 5 Consecutive Singles
@@ -120,5 +124,9 @@ MOVESET_2 = ["1x5",     # 5 Consecutive Singles
              "7",       # 7-Bomb
              "8",       # 8-Bomb
              "4.5",     # Small Joker bomb
-             "8.5"]     # Large Joker bomb
+             "8.5",     # Large Joker bomb
+             
+             "claim_landlord",
+             "refuse_landlord",
+             "skip"]
 

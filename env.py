@@ -39,7 +39,7 @@ class GameEnv:
                                self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips,
                                self.mode, False, self.refused_landlord)
         
-    def step(self, players, curr_player, valid_move, pattern, choice, leading_rank, remainder):
+    def step(self, players, curr_player, pattern, choice, leading_rank, remainder):
         """
         Execute a single step in the game.
         The current player makes a move, and the environment returns the new state, reward, and done flag.
@@ -47,27 +47,28 @@ class GameEnv:
         params:
             action (dict): A dictionary containing move information (e.g., pattern, choice)
         """
+        skipped = pattern == "skip"
 
-        # Update information based on if the move was valid
-        if valid_move:
-            self.cards_played[curr_player] += choice  # Frequency of cards played by the current player
-            self.cards_remaining -= choice                 # Frequency of cards remaining in play
-            self.curr_skips = 0                                 # Reset the temporary skip count
+        # Update information based on the type of move
+        if skipped:
+            self.total_skips[curr_player] += 1  # Total number of skips by the current player
+            self.curr_skips += 1                # Increment the temporary skip count
+
+        else:
+            self.cards_played[curr_player] += choice    # Frequency of cards played by the current player
+            self.cards_remaining -= choice              # Frequency of cards remaining in play
+            self.curr_skips = 0                         # Reset the temporary skip count
 
             if pattern in BOMB_SET:
                 self.bombs_played[curr_player] += 1                # Number of bombs played by the current player
                 self.bomb_types_played[curr_player].add(pattern)   # Types of bombs played by the current player
         
-        else:
-            self.total_skips[curr_player] += 1                 # Total number of skips by the current player
-            self.curr_skips += 1                                    # Increment the temporary skip count
-
         self.num_remaining[curr_player] = remainder    # Update the number of cards remaining in the player's hand
 
         # Record the action and new state
         action_record = {
             "player": curr_player,
-            "valid_move": valid_move,
+            "skipped": skipped,
             "pattern": pattern,
             "choice": choice,
             "leading_rank": leading_rank
@@ -76,7 +77,7 @@ class GameEnv:
         new_state = utils.get_state(self.num_players, players, curr_player, self.action_history, 
                                     self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips,
                                     self.mode, False, self.refused_landlord)
-        reward = utils.calculate_reward(valid_move, sum(choice), remainder)
+        reward = utils.calculate_reward(skipped, sum(choice), remainder)
 
         # Check if the game is over
         done = remainder <= 0
