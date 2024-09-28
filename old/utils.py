@@ -5,26 +5,6 @@ import numpy as np
 import itertools
 
 from consts import *
-from players import DefaultPlayer
-
-        
-        # # The remaining cards are the landlord cards
-        # # Players take turns to claim the landlord cards, starting from player 0
-        # for p in range(num_players):
-        #     claimed = self.players[p].claim_landlord(card_freq)
-        #     print(f"Player {p} claims the landlord cards: {claimed}\n")
-        #     if claimed:
-        #         self.landlord_idx = p
-        #         self.curr_player = p    # The landlord always starts first
-        #         break
-            
-        # # If all refuse, player 0 must become the landlord
-        # if self.landlord_idx is None:
-        #     self.landlord_idx = 0
-        #     self.players[0].landlord = True
-            
-        # # Add the cards to the landlord's hand
-        # self.players[self.landlord_idx].hand += card_freq
 
 
 def smallest_valid_choice(hand, pattern, prev_choice=None, leading_rank=-1):

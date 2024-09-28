@@ -5,45 +5,39 @@ import utils
 from consts import *
 
 class GameEnv:
-    def __init__(self, num_decks=1, num_players=4, mode="indv", players=[], moveset=MOVESET_1, seed=None):
-        """
-        Initialize variables that are constant across all games.
-        """
+    def __init__(self, num_decks=1, num_players=4, mode="lord", moveset=MOVESET_1):
         # Variables that persist across multiple games
-        # self.num_decks = num_decks
-        # self.num_players = num_players
-        # self.mode = mode
-        # self.moveset = moveset
+        self.num_decks = num_decks
+        self.num_players = num_players
+        self.mode = mode
         
-        # all_moves = utils.get_all_moves()
-        # cards_remaining = np.array(CARD_FREQ) * self.num_decks
-        # self.deck_moves = utils.get_deck_moves(all_moves, cards_remaining, moveset)
-        
-        # if seed is not None:
-        #     random.seed(seed)
-        
+        all_moves = utils.get_all_moves()
+        cards_remaining = np.array(CARD_FREQ) * self.num_decks
+        self.deck_moves = utils.get_deck_moves(all_moves, cards_remaining, moveset)
+    
         
     def reset(self, players):
-        """
-        Initialize a fresh game instance.
-        """
         # Variables that only persist for 1 game
-        # self.game_history = []
-        # self.action_history = []
-        # self.landlord_idx = None
-        # self.curr_player = 0
+        self.action_history = []
         
-        # num_remaining = np.array([sum(player.hand) for player in players])
-        # self.cards_played = np.zeros((self.num_players, NUM_RANKS))
-        # self.cards_remaining = np.array(CARD_FREQ) * self.num_decks
-        # self.bombs_played = np.zeros(self.num_players).astype(int)
-        # self.bomb_types_played = [set() for _ in range(self.num_players)]
-        # self.total_skips = np.zeros(self.num_players).astype(int)
+        self.num_remaining = np.array([sum(player.hand) for player in players])
+        self.cards_played = np.zeros((self.num_players, NUM_RANKS))
+        self.cards_remaining = np.array(CARD_FREQ) * self.num_decks
+        self.bombs_played = np.zeros(self.num_players).astype(int)
+        self.bomb_types_played = [set() for _ in range(self.num_players)]
+        self.total_skips = np.zeros(self.num_players).astype(int)
+        self.refused_landlord = []
         
-        # self.curr_skips = 0
-        # self.pattern = None
-        # self.prev_choice = None
-        # self.leading_rank = None
+        # Note: curr_player = 0
+        initial_state = utils.get_state(self.num_players, players, 0, self.action_history, 
+                                        self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips,
+                                        self.mode, self.mode=="lord", self.refused_landlord)
+        return initial_state
+    
+    def get_first_state(self, players, curr_player):
+        return utils.get_state(self.num_players, players, curr_player, self.action_history, 
+                               self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips,
+                               self.mode, False, self.refused_landlord)
         
     def step(self, players, curr_player, valid_move, pattern, choice, leading_rank, remainder):
         """
@@ -79,7 +73,9 @@ class GameEnv:
             "leading_rank": leading_rank
         }
         self.action_history.append(action_record)
-        new_state = utils.get_state(self.num_players, players, curr_player, self.action_history, self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips)
+        new_state = utils.get_state(self.num_players, players, curr_player, self.action_history, 
+                                    self.num_remaining, self.cards_played, self.cards_remaining, self.bombs_played, self.bomb_types_played, self.total_skips, self.curr_skips,
+                                    self.mode, False, self.refused_landlord)
         reward = utils.calculate_reward(valid_move, sum(choice), remainder)
 
         # Check if the game is over

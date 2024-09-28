@@ -171,7 +171,8 @@ def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_
     
     
 def get_state(num_players, players, curr_player, action_history,
-              num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, total_skips, curr_skips):
+              num_remaining, cards_played, cards_remaining, bombs_played, bomb_types_played, total_skips, curr_skips,
+              mode, claiming_landlord, refused_landlord):
     """
     Record the current state of the game.
     """
@@ -199,6 +200,9 @@ def get_state(num_players, players, curr_player, action_history,
                             "total_skips":           total_skips[opponent_ids].tolist()},
         
                 "curr_skips": curr_skips,
+                "mode": mode,
+                "claiming_landlord": claiming_landlord,
+                "refused_landlord": refused_landlord,
                 "action_history":   action_history.copy()}
     
     return state
@@ -221,12 +225,11 @@ def calculate_reward(valid_move, num_cards_played, remainder):
         return REWARDS["pass"]
     
     
-def announce_winner(mode, curr_player, landlord_idx):
+def announce_winner(mode, curr_player, winner_is_landlord):
     if mode == "indv":
         print(f"Game over. Player {curr_player} wins!")
     else:
-        landlord_wins = curr_player == landlord_idx
-        if landlord_wins:
+        if winner_is_landlord:
             print("Game over. Landlord wins!")
         else:
             print("Game over. Peasants win!")
