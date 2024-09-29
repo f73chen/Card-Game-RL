@@ -25,13 +25,15 @@ class GameEnv:
         self.cards_remaining = np.array(CARD_FREQ) * self.num_decks
         self.bombs_played = np.zeros(self.num_players).astype(int)
         self.bomb_types_played = [set() for _ in range(self.num_players)]
+        self.curr_skips = 0
         self.total_skips = np.zeros(self.num_players).astype(int)
+        
         self.landlord_idx = None
         self.choosing_landlord = self.mode=="lord"
         self.refused_landlord = []
     
     
-    def step(self, players, curr_player, pattern, choice, leading_rank, remainder, landlord_cards):
+    def step(self, players, curr_player, pattern, leading_rank, choice, remainder, landlord_cards):
         """
         Execute a single step in the game.
         The current player makes a move, and the environment returns the new state, reward, and done flag.
@@ -50,9 +52,10 @@ class GameEnv:
             if self.landlord_idx is not None:
                 players[self.landlord_idx].landlord = True
                 players[self.landlord_idx].hand += landlord_cards
+                
+                # Update landlord's total card count after claim
+                self.num_remaining[self.landlord_idx] = sum(players[self.landlord_idx].hand)
                 self.choosing_landlord = False
-            
-            self.num_remaining[self.landlord_idx] = sum(players[self.landlord_idx].hand)
 
         # Normal play
         else:

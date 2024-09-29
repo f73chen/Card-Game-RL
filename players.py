@@ -7,13 +7,13 @@ import torch.nn as nn
 from consts import *
 
 class Player:
-    def __init__(self, num_players):
+    def __init__(self):
         # Don't reset these
-        self.num_players = num_players
+        self.num_players = None
         self.deck_moves = None
         
         # Do reset these
-        self.hand = None
+        self.hand = []
         self.landlord = False
         self.free = False
         
@@ -22,7 +22,7 @@ class Player:
         
     # Reset everything except the moveset and deck_moves
     def reset(self):
-        self.hand = None
+        self.hand = []
         self.landlord = False
         self.free = False
         
@@ -35,37 +35,54 @@ class Player:
         if state["curr_skips"] >= self.num_players - 1:
             self.free = True
             
-        # If free to move, can choose any pattern
-        if self.free:
+        # If free to move or claiming landlord cards, can choose any pattern
+        if self.free or state["choosing_landlord"]:
             prev_pattern = None
             prev_leading_rank = -1
         
         # If not free to move, must follow previous pattern
+        # Retrieve the pattern just before the skip(s)
         else:
-            prev_pattern = state["action_history"][-1]["pattern"]
-            prev_leading_rank = state["action_history"][-1]["leading_rank"]
+            prev_pattern = "skip"
+            lookback = 1
+            while prev_pattern == "skip":
+                prev_pattern = state["action_history"][-lookback]["pattern"]
+                prev_leading_rank = state["action_history"][-lookback]["leading_rank"]
+                lookback += 1
         
         # Get the mask of available actions
         self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves, state["choosing_landlord"])
         self.free = False
             
         # Action selection logic
-        # If skipping is the only available action, must skip
-        if sum(self.curr_mask) == 1:
-            pattern, choice, leading_rank = self.deck_moves[-1]
+        available_actions = self.deck_moves[self.curr_mask]
+        
+        # If one of the actions allows the player to win, then must play it
+        must_play = False
+        for action in available_actions:
+            if self.hand.tolist() == action[2]:
+                pattern, leading_rank, choice = action
+                must_play = True
+                break
+        
+        # Randomly select a pattern and choose the first (smallest) option
+        if not must_play:
+            sample_idx = np.random.choice(len(available_actions))    # Sample proportional to number of actions for each pattern
+            pattern = available_actions[sample_idx][0]
             
-        # Else randomly select a pattern and choose the first (smallest) option
-        else:
-            available_actions = self.deck_moves[self.curr_mask]
-            available_patterns = set([action[0] for action in available_actions])
-            pattern = np.random.choice(available_patterns)
+            # Debugging
+            available_patterns = list(set([action[0] for action in available_actions]))
+            print(available_patterns)
+            
+            # Pick the smallest choice for that pattern
             for action in available_actions:
                 if action[0] == pattern:
-                    pattern, choice, leading_rank = action
+                    pattern, leading_rank, choice = action
+                    break
                     
         self.hand -= np.array(choice)
             
-        return pattern, choice, leading_rank, np.sum(self.hand)
+        return pattern, leading_rank, choice, np.sum(self.hand)
     
     
 class UserPlayer(Player):
@@ -75,29 +92,34 @@ class UserPlayer(Player):
         if state["curr_skips"] >= self.num_players - 1:
             self.free = True
             
-        # If free to move, can choose any pattern
-        if self.free:
+        # If free to move or claiming landlord cards, can choose any pattern
+        if self.free or state["choosing_landlord"]:
             prev_pattern = None
             prev_leading_rank = -1
         
         # If not free to move, must follow previous pattern
+        # Retrieve the pattern just before the skip(s)
         else:
-            prev_pattern = state["action_history"][-1]["pattern"]
-            prev_leading_rank = state["action_history"][-1]["leading_rank"]
+            prev_pattern = "skip"
+            lookback = 1
+            while prev_pattern == "skip":
+                prev_pattern = state["action_history"][-lookback]["pattern"]
+                prev_leading_rank = state["action_history"][-lookback]["leading_rank"]
+                lookback += 1
         
         # Get the mask of available actions
         self.hand_mask, self.curr_mask = utils.get_hand_moves(self.hand, self.free, prev_pattern, prev_leading_rank, self.hand_mask, self.deck_moves, state["choosing_landlord"])
             
         # Action selection logic
         # If skipping is the only available action, must skip
-        if sum(self.curr_mask) == 1:
-            pattern, choice, leading_rank = self.deck_moves[-1]
+        if sum(self.curr_mask) == 1 and self.curr_mask[-1]:
+            pattern, leading_rank, choice = self.deck_moves[-1]
             print("No playable moves, automatically skipped")
             
         # Else let the user choose an action and validate it
         else:
             available_actions = self.deck_moves[self.curr_mask]
-            available_patterns = set([action[0] for action in available_actions])
+            available_patterns = list(set([action[0] for action in available_actions]))
             
             if state["choosing_landlord"]:                
                 print(f"\nCards in hand: {utils.freq_array_to_card_str(self.hand)}")
@@ -105,9 +127,9 @@ class UserPlayer(Player):
                 claimed = input("Claim the landlord cards? (y/n): ") == "y"
                 
                 if claimed:
-                    pattern, choice, leading_rank = [action for action in available_actions if action[0] == "claim_landlord"][0]
+                    pattern, leading_rank, choice = [action for action in available_actions if action[0] == "claim_landlord"][0]
                 else:
-                    pattern, choice, leading_rank = [action for action in available_actions if action[0] == "refuse_landlord"][0]
+                    pattern, leading_rank, choice = [action for action in available_actions if action[0] == "refuse_landlord"][0]
             
             else:
                 print(f"Hand: {utils.freq_array_to_card_str(self.hand)}")
@@ -145,7 +167,7 @@ class UserPlayer(Player):
                         continue
                     
                     # Assume that the pattern and individual cards are already valid
-                    pattern, choice, leading_rank, valid_choice = utils.read_user_cards(pattern, user_cards, available_actions)
+                    pattern, leading_rank, choice, valid_choice = utils.read_user_cards(pattern, user_cards, available_actions)
                             
                     # Escape the while loop only if the input is valid
                     if not valid_choice:
@@ -157,14 +179,16 @@ class UserPlayer(Player):
                 self.free = False
                     
         self.hand -= np.array(choice).astype(int)
-        return pattern, choice, leading_rank, np.sum(self.hand)
+        return pattern, leading_rank, choice, np.sum(self.hand)
         
     
     
 class RLPlayer(Player):
     # TODO
     def __init__(self, num_players, num_patterns, num_ranks, lstm_hidden_size=128, fc_hidden_size=256):
-        super().__init__(num_players)
+        super().__init__()
+        
+        # TODO: Build this network after num_players has been adjusted, not during init
         
         self.num_total_actions = len(self.deck_moves)
         

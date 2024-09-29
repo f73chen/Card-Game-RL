@@ -8,12 +8,12 @@ from env import GameEnv
 from players import Player, UserPlayer, RLPlayer
 
 
-def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESET_1, num_episodes=1, seed=None):
+def run_game(num_decks=1, num_players=3, mode="lord", players=[], moveset=MOVESET_1, num_episodes=1, seed=None):
     if seed is not None:
         random.seed(seed)
 
     # Initialize the players and environment
-    num_players, players = utils.adjust_player_count()
+    num_players, players = utils.adjust_player_count(num_decks, num_players, mode, players)
     env = GameEnv(num_decks, num_players, mode, moveset)
     
     for player in players:
@@ -21,9 +21,10 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         player.deck_moves = env.deck_moves
 
     for episode in range(num_episodes):
-        # Reset all player variables
+        # Reset all player and environment variables
         for player in players:
             player.reset()
+        env.reset(players)
         
         # Randomize the order that players play in each round
         random.shuffle(players)
@@ -39,9 +40,9 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         # Players take turns to claim the landlord cards, starting from player 0
         if mode == "lord":
             for idx, player in enumerate(players):
-                state = env.get_state(players, curr_player)
-                pattern, choice, leading_rank, remainder = player.select_action(state, landlord_cards)
-                action, new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder, landlord_cards)
+                state = env.get_state(players, idx)
+                pattern, leading_rank, choice, remainder = player.select_action(state, landlord_cards)
+                action, new_state, reward, done = env.step(players, idx, pattern, leading_rank, choice, remainder, landlord_cards)
                 
                 # Record state transitions
                 transitions.append((state, action, new_state, reward, done))
@@ -54,19 +55,19 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         # Set the first player to be free to move
         players[curr_player].free = True
         
+        utils.print_game(pattern, leading_rank, choice, new_state, players, curr_player, start=True, verbose=True)
+        
         # Keep playing until the game is guaranteed to end
-        start = True
         done = False
         while not done:
             state = env.get_state(players, curr_player)
-            pattern, choice, leading_rank, remainder = players[curr_player].select_action(state)
-            action, new_state, reward, done = env.step(players, curr_player, pattern, choice, leading_rank, remainder)
+            pattern, leading_rank, choice, remainder = players[curr_player].select_action(state)
+            action, new_state, reward, done = env.step(players, curr_player, pattern, leading_rank, choice, remainder, None)
 
             # Record state transitions
             transitions.append((state, action, new_state, reward, done))
             
-            utils.print_game(pattern, choice, leading_rank, new_state, players, start, verbose=False)
-            start = False
+            utils.print_game(pattern, leading_rank, choice, new_state, players, curr_player, start=False, verbose=True)
             
             if done:
                 utils.announce_winner(mode, curr_player, players[curr_player].landlord)
@@ -76,3 +77,5 @@ def run_game(num_decks=2, num_players=3, mode="lord", players=[], moveset=MOVESE
         
         # TODO: Finalize rewards in the transition list after the game ends
         # TODO: Update RL agents using the game history (if training)
+
+run_game()

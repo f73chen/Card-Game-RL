@@ -5,7 +5,7 @@ import numpy as np
 import itertools
 
 from consts import *
-from players import DefaultPlayer
+from players import Player
 
 
 def adjust_player_count(num_decks, num_players, mode, players):
@@ -30,7 +30,7 @@ def adjust_player_count(num_decks, num_players, mode, players):
     # Remove extra players and add default players if necessary
     players = players[:num_players]
     for p in range(num_players - len(players)):
-        players.append(DefaultPlayer())
+        players.append(Player())
     
     return num_players, players
 
@@ -132,7 +132,7 @@ def get_deck_moves(all_moves, cards_remaining, moveset):
         pattern, _, move_freq = move
         if pattern in moveset and min(cards_remaining - move_freq) >= 0:
             deck_moves.append(move)
-    return deck_moves
+    return np.array(deck_moves, dtype=object)
             
 
 def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_moves, choosing_landlord):
@@ -172,19 +172,19 @@ def get_hand_moves(hand, free, prev_pattern, prev_leading_rank, hand_mask, deck_
         # Next, check the specific situation based on free, pattern, and leading_rank
         # If player is free, any move from the hand is playable
         if free:
-            return True, hand_mask, hand_mask
+            curr_mask = hand_mask.copy()
         
         else:
             curr_mask = hand_mask.copy()
-            for i, mask in enumerate(hand_mask):
-                pattern, leading_rank, move_freq = deck_moves[i]
+            for i, hand in enumerate(hand_mask):
+                pattern, leading_rank, choice = deck_moves[i]
                 
                 # First, reject actions based on pattern and leading_rank
-                if not mask or pattern != prev_pattern or leading_rank <= prev_leading_rank:
+                if not hand or pattern != prev_pattern or leading_rank <= prev_leading_rank:
                     curr_mask[i] = False
                     
                 # Then, make bombs available to play if the criteria is met
-                if pattern in BOMB_SET:
+                if hand and pattern in BOMB_SET:
                     # Can always bomb if the previous move isn't a bomb
                     if prev_pattern not in BOMB_SET:
                         curr_mask[i] = True
@@ -247,9 +247,10 @@ def read_user_cards(pattern, user_cards, available_actions):
     
     
 # Print the current state of the game
-def print_game(pattern, choice, leading_rank, new_state, players, start=False, verbose=False):
+def print_game(pattern, leading_rank, choice, new_state, players, curr_player, start=False, verbose=False):
     if pattern == "skip":
         print(f"Skip. Skip count: {new_state["curr_skips"]}\n")
+        print(f"Next player: {new_state["opponents"]["id"][0]}\n")
     else:
         if start:
             if verbose:
@@ -258,20 +259,19 @@ def print_game(pattern, choice, leading_rank, new_state, players, start=False, v
             else:
                 for idx, player in enumerate(players):
                     print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
+            print(f"\nPlayer {curr_player} starts\n")
+
         else:
+            print(f"Choice: [{freq_array_to_card_str(choice)}], pattern: {pattern}, rank: {leading_rank}\n")
             if verbose:
-                print(f"Choice: [{freq_array_to_card_str(choice)}], pattern: {pattern}, rank: {leading_rank}, card: {CARDS[leading_rank]}\n")
                 for idx, player in enumerate(players):
-                    print(f"Player {idx}: {player.hand} {sum(player.hand)} ({'Landlord' if player.landlord else 'Peasant'})")
+                    print(f"Player {idx}: {player.hand} {sum(player.hand)} {type(player).__name__} ({'Landlord' if player.landlord else 'Peasant'})")
             else:
-                print(f"Choice: [{freq_array_to_card_str(choice)}], pattern: {pattern}\n")
                 for idx, player in enumerate(players):
                     print(f"Player {idx}: {sum(player.hand)} remaining ({'Landlord' if player.landlord else 'Peasant'})")
-                 
-        print(f"All remaining: {freq_array_to_card_str(new_state["opponents"]["all_cards_remaining"])}")
-        print()
-
-    print(f"Next player: {new_state["opponents"]["id"][0]}\n")
+                    
+            print(f"All remaining: {freq_array_to_card_str(new_state["opponents"]["all_cards_remaining"])}\n")
+            print(f"Next player: {new_state["opponents"]["id"][0]}\n")
 
     
 def announce_winner(mode, curr_player, winner_is_landlord):
