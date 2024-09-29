@@ -228,19 +228,19 @@ def read_user_cards(pattern, user_cards, available_actions):
     """
     Convert card string to frequency array.
     """
-    choice = [0] * 15
-    leading_rank = RANKS[user_cards[0]]
-    
     # Note: Already made sure user can't both be free and skip turn
     # So if the input is empty at this point, available_actions[-1] must be "skip"
     if not user_cards:
-        return available_actions[-1]
+        return *available_actions[-1], True
+    
+    choice = [0] * 15
+    leading_rank = RANKS[user_cards[0]]
     
     for c in user_cards:
         choice[RANKS[c]] += 1
     
     # Check if the specific choice is playable
-    if (pattern, leading_rank, choice) in available_actions:
+    if [pattern, leading_rank, choice] in available_actions.tolist():
         return pattern, leading_rank, choice, True
     else:
         return None, None, None, False

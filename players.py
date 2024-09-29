@@ -146,7 +146,7 @@ class UserPlayer(Player):
                     # Validate the pattern
                     if pattern not in available_patterns:
                         print("Invalid pattern. Please try again.")
-                        print(f"Available patterns: {available_patterns}")
+                        print(f"Available patterns: {sorted(available_patterns)}")
                         continue
                         
                     # Assume the first card is the leading rank

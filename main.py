@@ -8,7 +8,7 @@ from env import GameEnv
 from players import Player, UserPlayer, RLPlayer
 
 
-def run_game(num_decks=1, num_players=3, mode="lord", players=[], moveset=MOVESET_1, num_episodes=1, seed=None):
+def run_game(num_decks=1, num_players=3, mode="lord", players=[UserPlayer()], moveset=MOVESET_1, num_episodes=1, seed=None):
     if seed is not None:
         random.seed(seed)
 
